@@ -86,3 +86,9 @@ void releaseLock (int lockFd) {
     flock (lockFd, LOCK_UN);
     close (lockFd);
 }
+
+void printTopics(Node* head){
+	Node* curr = head;
+	printf("Topics");
+
+}

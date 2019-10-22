@@ -74,6 +74,15 @@ Node* LinkedList_getHead(Node* node){
 	}
 	return node;
 }
+int LinkedList_getSize(Node* node){
+	int size = 1;
+	Node* curr = node;
+	while(curr->next != NULL){
+		++size;
+		curr = curr->next;
+	}
+	return size;
+}
 
 Node* new_Node(void* data){
 	Node* ptr = malloc(sizeof(Node));
