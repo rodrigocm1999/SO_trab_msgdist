@@ -22,3 +22,4 @@ Node* LinkedList_getLast(Node* head);
 Node* LinkedList_getHead(Node* node);
 int LinkedList_getSize(Node* node);
 Node* new_Node(void* data);
+int Node_hasNext(Node* node);

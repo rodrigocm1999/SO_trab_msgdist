@@ -91,3 +91,7 @@ Node* new_Node(void* data){
 	ptr->previous = NULL;
 	return ptr;
 }
+
+int Node_hasNext(Node* node){
+	return node->next != NULL ? 1 : 0;
+}

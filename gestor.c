@@ -14,11 +14,6 @@ typedef struct{
 	int duration;
 }Message;
 
-
-
-void verify();
-int acquireLock (char *fileSpec);
-void releaseLock (int lockFd);
 void shutdown(){
 	exit(0);
 }
@@ -36,11 +31,64 @@ int main(int argc,char* argv[]){
 
 	printf("Has started\n");
 
-	Node* msgs = new_Node(NULL);
-	Node* topics = new_Node(NULL);
-	Node* users = new_Node(NULL);
+	Node* msgsHead = new_Node(NULL);
+	Node* topicsHead = new_Node(NULL);
+	Node* usersHead = new_Node(NULL);
 
 	int filter = 0;
+
+	printf("Write \"help\" to get command information");
+
+	char command[512];
+	char* token;
+	while(1){
+		scanf("%s",command);
+		cmd = strtok(command," ");
+		
+		if(strcmp(cmd,"filter") == 0){
+			token = strtok(command," ");
+			if(strcmp(token,"on") == 0){
+				filter = 1;
+			}else if(strcmp(token,"off") == 0){
+				filter = 0;
+			}else{
+				printf("\nInvalid filter option, available : on off\n");
+			}
+		}
+		if(strcmp(cmd,"users") == 0){
+			printUsers(usersHead);
+		}
+		else if(strcmp(cmd,"topics") == 0){
+			printUsers(topicsHead);
+		}
+		else if(strcmp(cmd,"msg") == 0){
+			printMsgs(msgsHead);
+		}
+		else if(strcmp(cmd,"topic") == 0){
+			char* topic = strtok(command," ");
+			Node* curr = msgsHead;
+			while( curr != NULL ){
+				Message* currMessage = (Message*)curr->data;
+				if(strcmp(currMessage->topic,topic) == 0){
+					printf("");
+				}
+
+				curr = curr->next;
+			}
+
+		}
+		else if(strcmp(cmd,"del")){
+			token = strtok(command," ");
+		}
+		else if(strcmp(cmd,"help")){
+			//open and print help.txt
+		}
+
+
+
+	}
+
+
 
 
 
@@ -56,7 +104,7 @@ void verify(){
 
 	if(pid == 0){
 		//Child
-		close(stdin);
+		close(0);
 		dup(p[0]);
 		close(p[0]);
 		close(p[1]);
@@ -89,6 +137,33 @@ void releaseLock (int lockFd) {
 
 void printTopics(Node* head){
 	Node* curr = head;
-	printf("Topics");
+	printf("Topics : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s , subscribers : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
 
+void printUsers(Node* head){
+	Node* curr = head;
+	printf("Users online : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s , subscribed to : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
+
+void printMsgs(Node* head){
+	Node* curr = head;
+	printf("Msgs on Memory : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s ,  : \n",(char*)curr->data);
+		curr = curr->next;
+	}
 }
