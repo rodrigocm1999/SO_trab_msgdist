@@ -40,13 +40,13 @@ int main(int argc,char* argv[]){
 	printf("Write \"help\" to get command information");
 
 	char command[512];
-	char* token;
+	char* cmd;
 	while(1){
 		scanf("%s",command);
 		cmd = strtok(command," ");
 		
 		if(strcmp(cmd,"filter") == 0){
-			token = strtok(command," ");
+			char* token = strtok(command," ");
 			if(strcmp(token,"on") == 0){
 				filter = 1;
 			}else if(strcmp(token,"off") == 0){
@@ -78,7 +78,7 @@ int main(int argc,char* argv[]){
 
 		}
 		else if(strcmp(cmd,"del")){
-			token = strtok(command," ");
+			char* token = strtok(command," ");
 		}
 		else if(strcmp(cmd,"help")){
 			//open and print help.txt
