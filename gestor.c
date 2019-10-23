@@ -16,6 +16,8 @@ typedef struct{
 	int duration;
 }Message;
 
+
+
 void shutdown(){
 	exit(0);
 }
