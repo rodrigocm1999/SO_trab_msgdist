@@ -7,6 +7,7 @@
 #include <sys/file.h>
 #include <pthread.h>
 #include "utils.h"
+int msgId = 0;
 
 typedef struct{
 	int id;
@@ -15,6 +16,13 @@ typedef struct{
 	char body[1000];
 	int duration;
 }Message;
+
+Message* new_Message(){
+	Message* obj = malloc(sizeof(Message));
+	obj->id = ++msgId;
+
+	return obj;
+}
 
 
 
@@ -112,9 +120,11 @@ int main(int argc,char* argv[]){
 	printf("Has started\n");
 
 	Node* msgsHead = new_Node(NULL);
-	int msgId = 1;
 	Node* topicsHead = new_Node(NULL);
 	Node* usersHead = new_Node(NULL);
+	/*List* msgsHead = new_List();
+	List* topicsHead = new_List();
+	List* usersHead = new_List();*/
 
 	int filter = 0;
 
@@ -169,15 +179,8 @@ int main(int argc,char* argv[]){
 			//open and print help.txt
 		}
 
-
-
 	}
 
-
-
-
-
 	while(1) {pause();}
-
 	return 0;
 }

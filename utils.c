@@ -14,25 +14,12 @@ Node* LinkedList_getNode(Node* head,void* obj){
 }
 
 void LinkedList_detachNode(Node* node){
-	/*Node* curr = head;
-	while(curr != NULL){
-		if (curr->data == obj){
-			if(curr->previous != NULL){
-				curr->previous->next = curr->next;
-			}
-			if(curr->next != NULL){
-				curr->next->previous = curr->previous;
-			}
-			return curr;
-		}
-		curr = curr->next;
-	}*/
-		if(node->previous != NULL){
-			node->previous->next = node->next;
-		}
-		if(node->next != NULL){
-			node->next->previous = node->previous;
-		}
+	if(node->previous != NULL){
+		node->previous->next = node->next;
+	}
+	if(node->next != NULL){
+		node->next->previous = node->previous;
+	}
 }
 
 void LinkedList_append(Node* head,Node* newNode){
@@ -94,4 +81,45 @@ Node* new_Node(void* data){
 
 int Node_hasNext(Node* node){
 	return node->next != NULL ? 1 : 0;
+}
+
+#define INITIALARRAYSIZE 10
+
+List* new_List(){
+	List* obj = malloc(sizeof(List));
+	obj->arr = malloc(INITIALARRAYSIZE * sizeof(void*));
+	obj->capacity = 10;
+	obj->size = 0;
+}
+void List_add(List* list,void* newElem){
+	if(list->size == list->capacity){
+		List_expand(list);
+	}
+}
+void List_expand(List* list){
+	int newCapacity = list->capacity * 2;
+	void* newArr = malloc(newCapacity * sizeof(void*));
+	Array_copyContent(list->arr,list->size,newArr);
+	free(list->arr);
+	list->arr = newArr;
+	list->capacity = newCapacity;
+}
+void List_shrink(List* list){
+	int newCapacity = list->size;
+	void* newArr = malloc(newCapacity * sizeof(void*));
+	Array_copyContent(list->arr,list->size,newArr);
+	free(list->arr);
+	list->arr = newArr;
+	list->capacity = newCapacity;
+}
+
+void List_removeAt(List* list,int pos){
+	printf("List_removeAt TODO");
+}
+
+
+void Array_copyContent(void** arr,int size,void** other){
+	for(int i = 0; i< size; i++){
+		other[i] = arr[i];
+ 	}
 }
