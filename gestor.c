@@ -20,6 +20,77 @@ void shutdown(){
 	exit(0);
 }
 
+void verify(){
+	int p[2];
+	pipe(p);
+	int pid = fork();
+
+	if(pid == 0){
+		//Child
+		close(0);
+		dup(p[0]);
+		close(p[0]);
+		close(p[1]);
+	}else{
+		//Parent
+		close(p[0]);
+		char str[100];
+		fprintf(p[1],str,strlen(str));
+	}
+}
+
+int acquireLock (char *fileSpec) {
+    int lockFd;
+
+    if ((lockFd = open (fileSpec, O_CREAT | O_RDWR, 0600))  < 0){
+        return -1;
+	}
+    if (flock (lockFd, LOCK_EX | LOCK_NB) < 0) {
+        close (lockFd);
+        return -1;
+    }
+
+    return lockFd;
+}
+
+void releaseLock (int lockFd) {
+    flock (lockFd, LOCK_UN);
+    close (lockFd);
+}
+
+void printTopics(Node* head){
+	Node* curr = head;
+	printf("Topics : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s , subscribers : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
+
+void printUsers(Node* head){
+	Node* curr = head;
+	printf("Users online : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s , subscribed to : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
+
+void printMsgs(Node* head){
+	Node* curr = head;
+	printf("Msgs on Memory : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s ,  : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
+
 int main(int argc,char* argv[]){
 
 	printf("Starting\n");
@@ -107,75 +178,4 @@ int main(int argc,char* argv[]){
 	while(1) {pause();}
 
 	return 0;
-}
-
-void verify(){
-	int p[2];
-	pipe(p);
-	int pid = fork();
-
-	if(pid == 0){
-		//Child
-		close(0);
-		dup(p[0]);
-		close(p[0]);
-		close(p[1]);
-	}else{
-		//Parent
-		close(p[0]);
-		char str[100];
-		fprintf(p[1],str,strlen(str));
-	}
-}
-
-int acquireLock (char *fileSpec) {
-    int lockFd;
-
-    if ((lockFd = open (fileSpec, O_CREAT | O_RDWR, 0600))  < 0){
-        return -1;
-	}
-    if (flock (lockFd, LOCK_EX | LOCK_NB) < 0) {
-        close (lockFd);
-        return -1;
-    }
-
-    return lockFd;
-}
-
-void releaseLock (int lockFd) {
-    flock (lockFd, LOCK_UN);
-    close (lockFd);
-}
-
-void printTopics(Node* head){
-	Node* curr = head;
-	printf("Topics : %d total\n", LinkedList_getSize(head) );
-	
-	while(curr != NULL){
-		//TODO
-		printf("\t%s , subscribers : \n",(char*)curr->data);
-		curr = curr->next;
-	}
-}
-
-void printUsers(Node* head){
-	Node* curr = head;
-	printf("Users online : %d total\n", LinkedList_getSize(head) );
-	
-	while(curr != NULL){
-		//TODO
-		printf("\t%s , subscribed to : \n",(char*)curr->data);
-		curr = curr->next;
-	}
-}
-
-void printMsgs(Node* head){
-	Node* curr = head;
-	printf("Msgs on Memory : %d total\n", LinkedList_getSize(head) );
-	
-	while(curr != NULL){
-		//TODO
-		printf("\t%s ,  : \n",(char*)curr->data);
-		curr = curr->next;
-	}
 }
