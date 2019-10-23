@@ -5,9 +5,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <pthread.h>
 #include "utils.h"
 
 typedef struct{
+	int id;
 	char topic[20];
 	char title[20];
 	char body[1000];
@@ -29,15 +31,21 @@ int main(int argc,char* argv[]){
 		exit(0);
 	}
 
+	pthread_t mainThread;
+	pthread_create(mainThread,NULL,/*function pointer*/NULL,
+	/*void* of the fucntion*/NULL);
+
+
 	printf("Has started\n");
 
 	Node* msgsHead = new_Node(NULL);
+	int msgId = 1;
 	Node* topicsHead = new_Node(NULL);
 	Node* usersHead = new_Node(NULL);
 
 	int filter = 0;
 
-	printf("Write \"help\" to get command information");
+	printf("Write \"help\" to get command information\n");
 
 	char command[512];
 	char* cmd;
@@ -79,6 +87,10 @@ int main(int argc,char* argv[]){
 		}
 		else if(strcmp(cmd,"del")){
 			char* token = strtok(command," ");
+		}
+		else if(strcmp(cmd,"shutdown")){
+			printf("Exiting\n");
+			exit(0);	
 		}
 		else if(strcmp(cmd,"help")){
 			//open and print help.txt
