@@ -7,7 +7,6 @@
 #include <sys/file.h>
 #include <pthread.h>
 #include "utils.h"
-int msgId = 0;
 
 typedef struct{
 	int id;
@@ -16,37 +15,13 @@ typedef struct{
 	char body[1000];
 	int duration;
 }Message;
+int msgId = 0;
 
 Message* new_Message(){
 	Message* obj = malloc(sizeof(Message));
 	obj->id = ++msgId;
 
 	return obj;
-}
-
-
-
-void shutdown(){
-	exit(0);
-}
-
-void verify(){
-	int p[2];
-	pipe(p);
-	int pid = fork();
-
-	if(pid == 0){
-		//Child
-		close(0);
-		dup(p[0]);
-		close(p[0]);
-		close(p[1]);
-	}else{
-		//Parent
-		close(p[0]);
-		char str[100];
-		fprintf(p[1],str,strlen(str));
-	}
 }
 
 int acquireLock (char *fileSpec) {
@@ -70,7 +45,7 @@ void releaseLock (int lockFd) {
 
 void printTopics(Node* head){
 	Node* curr = head;
-	printf("Topics : %d total\n", LinkedList_getSize(head) );
+	printf("Topics : %d total\n", LinkedList_getSize(head));
 	
 	while(curr != NULL){
 		//TODO
@@ -111,6 +86,26 @@ int main(int argc,char* argv[]){
 		printf("Program already running\nExiting");
 		exit(0);
 	}
+
+	int verifPipe[2];
+	pipe(verifPipe);
+	int childPid = fork();
+
+	if(childPid == 0){
+		//Child
+		close(0);
+		dup(verifPipe[0]);
+		close(verifPipe[0]);
+		close(verifPipe[1]);
+
+		execl("./verificador","verificador",NULL);
+	}else{
+		//Parent
+		close(verifPipe[0]);
+		char str[100];
+		fprintf(verifPipe[1],str,strlen(str));
+	}
+
 
 	pthread_t mainThread;
 	pthread_create(mainThread,NULL,/*function pointer*/NULL,
