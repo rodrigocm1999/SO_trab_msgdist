@@ -1,0 +1,9 @@
+Ligar/desligar a filtragem de palavras proibidas : filter on / filter off
+Listar utilizadores : users
+Litar tópicos : topics
+Listar mensagens : msg
+Listar mensagens de um tópico : topic tópico-em-questão
+Apagar mensagem : del mensagem-em-questão
+Excluir um utilizador (cliente será fechado) : kick username-em-questão
+Desligar o gestor : shutdown
+Eliminar tópicos vazios : prune
