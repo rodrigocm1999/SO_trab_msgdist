@@ -38,7 +38,7 @@ int main(int argc,char* argv[]){
 		case 5: // Subscribe to Topic
 			break;
 
-		case 6: // Unsubscribe to Topic
+		case 6:int  a = 4;
 			break;
 
 		default:
