@@ -5,7 +5,14 @@ int main(int argc,char* argv[]){
 
 	if(!isServerRunning()){
 		printf("Server not running\nExiting\n");
+		exit(0);
 	}
+	
+	
+	int server = fopen(LISTENERPATH,O_RDONLY);
+	
+	
+	
 
 	char username[30];
 	printf("Username: \n");
@@ -38,7 +45,7 @@ int main(int argc,char* argv[]){
 		case 5: // Subscribe to Topic
 			break;
 
-		case 6:int  a = 4;
+		case 6:// Unsubscribe to topic
 			break;
 
 		default:
