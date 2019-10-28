@@ -1,14 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <ncurses.h>
-
+#include "cliente.h"
 
 
 int main(int argc,char* argv[]){
 
+	if(!isServerRunning()){
+		printf("Server not running\nExiting\n");
+	}
 
 	char username[30];
 	printf("Username: \n");

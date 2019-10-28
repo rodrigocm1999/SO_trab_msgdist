@@ -1,92 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
-#include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <pthread.h>
-#include "utils.h"
-
-typedef struct{
-	int id;
-	char topic[20];
-	char title[20];
-	char body[1000];
-	int duration;
-}Message;
-int msgId = 0;
-
-Message* new_Message(){
-	Message* obj = malloc(sizeof(Message));
-	obj->id = ++msgId;
-
-	return obj;
-}
-
-int fileLock (char *fileSpec) {
-    int lockFd;
-
-    if ((lockFd = open (fileSpec, O_CREAT | O_RDWR, 0600))  < 0){
-        return -1;
-	}
-    if (flock (lockFd, LOCK_EX | LOCK_NB) < 0) {
-        close (lockFd);
-        return -1;
-    }
-    return lockFd;
-}
-
-void printTopics(Node* head){
-	Node* curr = head;
-	printf("Topics : %d total\n", LinkedList_getSize(head));
-	
-	while(curr != NULL){
-		//TODO
-		printf("\t%s , subscribers : \n",(char*)curr->data);
-		curr = curr->next;
-	}
-}
-
-void printUsers(Node* head){
-	Node* curr = head;
-	printf("Users online : %d total\n", LinkedList_getSize(head) );
-	
-	while(curr != NULL){
-		//TODO
-		printf("\t%s , subscribed to : \n",(char*)curr->data);
-		curr = curr->next;
-	}
-}
-
-void printMsgs(Node* head){
-	Node* curr = head;
-	printf("Msgs on Memory : %d total\n", LinkedList_getSize(head) );
-	
-	while(curr != NULL){
-		//TODO
-		printf("\t%s ,  : \n",(char*)curr->data);
-		curr = curr->next;
-	}
-}
-
-void verifyBadWords(){
-	char msgEnd[] = "##MSGEND##";
-}
-
-typedef struct {
-	int id;
-	char pathFIFO[32];
-}NewClientInfo;
-
-void* handleClient(void* data){
-	NewClientInfo * info = data;
-	
-	//Dont forget to free it
-	free(info);
-}
+#include "gestor.h"
 
 void* waitForNewClients(void* data){
 	//char mainFIFO[] = "./fifos/listener";
@@ -125,11 +37,9 @@ void shutdown(int signal){
 
 int main(int argc,char* argv[]){
 
-	//try to lock file to avoid multiple processes to run
-	char filePath[100] =  "./lock.lock";
-	int lock = fileLock(filePath);
-	if (lock == -1){
-		printf("Program already running\nExiting");
+	//check if process already running
+	if (isServerRunning()){
+		printf("Program already running\nExiting\n");
 		exit(0);
 	}
 
@@ -143,6 +53,7 @@ int main(int argc,char* argv[]){
 		close(verifPipe[0]);
 		close(verifPipe[1]);
 
+		//start verifier on child process
 		char badWordsFile[] = "badwords.txt";
 		char ver[] = "verificador";
 		execl(ver, ver, badWordsFile, (char*)NULL);
@@ -153,9 +64,11 @@ int main(int argc,char* argv[]){
 
 	signal(SIGINT, shutdown);
 
-	pthread_t listenerThread;
+	pthread_t listenerThread; // Listener for new Clients
 	pthread_create(&listenerThread,NULL,waitForNewClients,(void*)NULL);
 
+
+	// Create lists for memory objects
 	Node* msgsHead = new_Node(NULL);
 	Node* topicsHead = new_Node(NULL);
 	Node* usersHead = new_Node(NULL);
@@ -164,19 +77,19 @@ int main(int argc,char* argv[]){
 	List* topicsHead = new_List();
 	List* usersHead = new_List();*/
 
-	printf("Has started\n");
+	printf("Started\n");
 
 	printf("Write \"help\" to get command information\n");
 
 	char command[512];
 	char* cmd;
 	while(1){
-		scanf("%s",command);
-		cmd = strtok(command," ");
+		printf("-> ");
+		fgets(command,512,stdin);
+		cmd = strtok(command,DELIM);
 		
 		if(strcmp(cmd,"filter") == 0){
-			char* token = strtok(NULL," ");
-			printf("asddsa\n \tTest: %s \n",token);
+			char* token = strtok(NULL,DELIM);
 			if(token != NULL){
 				if(strcmp(token,"on") == 0){
 					filter = 1;
@@ -189,29 +102,24 @@ int main(int argc,char* argv[]){
 					else printf("Filter is on\n");
 				}
 			}else{
-				printf("\nInvalid filter option, available : on off\n");
+				printf("\nInvalid filter option, available : on off status\n");
 			}
-			printf("asddsa 2\n");
 		}
 
-
-		if(strcmp(cmd,"users") == 0){
+		else if(strcmp(cmd,"users") == 0){
 			printUsers(usersHead);
 		}
-
 
 		else if(strcmp(cmd,"topics") == 0){
 			printUsers(topicsHead);
 		}
 
-
 		else if(strcmp(cmd,"msg") == 0){
 			printMsgs(msgsHead);
 		}
 
-
 		else if(strcmp(cmd,"topic") == 0){
-			char* topic = strtok(command," ");
+			char* topic = strtok(command,DELIM);
 			Node* curr = msgsHead;
 			while( curr != NULL ){
 				Message* currMessage = (Message*)curr->data;
@@ -223,16 +131,22 @@ int main(int argc,char* argv[]){
 			}
 		}
 
-
 		else if(strcmp(cmd,"del") == 0){
-			char* token = strtok(command," ");
+			char* token = strtok(command,DELIM);
 		}
 
+		else if(strcmp(cmd,"kick") == 0){
+			char* username = strtok(command,DELIM);
+
+		}	
 
 		else if(strcmp(cmd,"shutdown") == 0){
 			shutdown(SIGINT);
 		}
 
+		else if(strcmp(cmd,"prune") == 0){
+			
+		}
 
 		else if(strcmp(cmd,"help") == 0){
 			FILE* file = fopen("help.txt","r");
@@ -244,7 +158,63 @@ int main(int argc,char* argv[]){
 			printf("\n\n");
 		}
 
+		else {
+			printf("Write \"help\" to get command information\n");
+		}
 
 	}
 	return 0;
+}
+
+void verifyBadWords(){
+	char msgEnd[] = "##MSGEND##";
+}
+
+Message* new_Message(){
+	Message* obj = malloc(sizeof(Message));
+	obj->id = ++msgId;
+
+	return obj;
+}
+
+void* handleClient(void* data){
+	NewClientInfo * info = data;
+	
+
+
+	//Dont forget to free it
+	free(info);
+}
+
+void printTopics(Node* head){
+	Node* curr = head;
+	printf("Topics : %d total\n", LinkedList_getSize(head));
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s , subscribers : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
+
+void printUsers(Node* head){
+	Node* curr = head;
+	printf("Users online : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s , subscribed to : \n",(char*)curr->data);
+		curr = curr->next;
+	}
+}
+
+void printMsgs(Node* head){
+	Node* curr = head;
+	printf("Msgs on Memory : %d total\n", LinkedList_getSize(head) );
+	
+	while(curr != NULL){
+		//TODO
+		printf("\t%s ,  : \n",(char*)curr->data);
+		curr = curr->next;
+	}
 }
