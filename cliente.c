@@ -8,15 +8,21 @@ int main(int argc,char* argv[]){
 		exit(0);
 	}
 	
-	
-	int server = fopen(LISTENERPATH,O_RDONLY);
-	
-	
-	
-
 	char username[30];
 	printf("Username: \n");
 	scanf("%s",username);
+
+	//Criar fifo para servidor enviar coisas para cliente
+	// Enviar PID, username e talvez path para FIFO
+	// criar fifo em /tmp/
+
+	int server = fopen(LISTENERPATH,O_RDONLY);
+
+
+	// Criar thread para receber info do servidor
+	pthread_t listenerThread; 
+	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
+
 
 	int choice;
 	while(1){
@@ -57,18 +63,18 @@ int main(int argc,char* argv[]){
 	}
 
 
-
-
 	/*initscr();
 	cbreak();
-
 	int nLines = 20,nCols = 100,y0 = 10,x0 = 10;
 	WINDOW * win = newwin(nLines, nCols, y0, x0);
-	
 	wrefresh(win);
-
-
 	while(1){pause();}*/
-
 	return 0;
+}
+
+
+void* fifoListener(void* data){
+	
+
+
 }
