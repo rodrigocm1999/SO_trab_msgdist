@@ -22,6 +22,7 @@
 
 typedef struct{
 	int id;
+	char username[32];
 	char topic[20];
 	char title[100];
 	char body[1000];
@@ -30,7 +31,7 @@ typedef struct{
 
 typedef struct {
 	pid_t pid;
-	char* name;
+	char name[32];
 	char** topics;
 }User;
 

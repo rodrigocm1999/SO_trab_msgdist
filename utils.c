@@ -119,10 +119,10 @@ void List_expand(List* list){
 }
 void List_shrink(List* list){
 	int newCapacity = list->size;
-	void* newArr = malloc(newCapacity * sizeof(void*));
-	Array_copyContent(list->arr,list->size,newArr);
-	free(list->arr);
-	list->arr = newArr;
+	void* newArr = realloc(list->arr,newCapacity * sizeof(void*));
+	//Array_copyContent(list->arr,list->size,newArr);
+	//free(list->arr);
+	//list->arr = newArr;
 	list->capacity = newCapacity;
 }
 

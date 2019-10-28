@@ -3,7 +3,7 @@ DEPS = cliente.h gestor.h utils.h comum.h
 all : cliente gestor verificador
 
 cliente : cliente.o utils.o comum.o
-	gcc cliente.o utils.o comum.o -o cliente -lcurses
+	gcc cliente.o utils.o comum.o -o cliente -lcurses -pthread
 
 cliente.o : cliente.c
 	gcc cliente.c -c

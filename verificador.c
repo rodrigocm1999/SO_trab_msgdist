@@ -19,17 +19,18 @@ void exitNow(int s) {
 /* reads forbidden word list from file */
 /* assume all words have at most 19 chars */
 /* file must not have more than one word per line */
-/* return number of words read */
+/* return number of word read */
 int readWordFile(FILE * f, char wdef[][MAXWL], int maxw) {
     int numw = 0;
     while (!feof(f) && numw < maxw)
-        numw += fscanf(f,"%s", wdef[numw]);
+        if (fscanf(f,"%s", wdef[numw])>0)
+            numw++;
     return numw;
 }
 
 /* checks word agains forbidden word dictionary */
 /* word must match exactly - partials do not count */
-/* returns 0 or 1 */
+/* returns 0 or 1*/
 int checkWord(char * word, char wdef[][MAXWL], int maxw) {
     int i;
     for (i=0; i<maxw;i++)
@@ -70,6 +71,7 @@ int main(int argc, char** argv) {
             continue;
         if (!strcmp(word,"##MSGEND##")) {
             printf("%d\n",numhits);
+            fflush(stdout);
             numhits = 0; /* restart counting */
             justprinted = 1;
         }
@@ -82,5 +84,3 @@ int main(int argc, char** argv) {
         printf("%d\n",numhits);
     return 0;
 }
-
-

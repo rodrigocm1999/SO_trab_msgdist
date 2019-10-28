@@ -16,7 +16,7 @@ int main(int argc,char* argv[]){
 	// Enviar PID, username e talvez path para FIFO
 	// criar fifo em /tmp/
 
-	int server = fopen(LISTENERPATH,O_RDONLY);
+	int server = open(LISTENERPATH,O_RDONLY);
 
 
 	// Criar thread para receber info do servidor

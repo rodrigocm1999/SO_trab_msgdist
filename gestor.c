@@ -13,47 +13,36 @@ void* clientMessageReciever(void* data){
 			exit(0);
 		}
 	}
-	int const bufferSize = 2048;
-	char buff[bufferSize];
-	char* buffer = buff;
+	
 	while(1){
-		read(fifo, buffer, bufferSize * sizeof(char));
+		int const bufferSize = 2048;
+		char buff[bufferSize];
+		char* buffer = buff;
+
+		read(fifo, buff, bufferSize * sizeof(char));
 		int command = atoi(buffer);
 		buffer = buffer + sizeof(int);
 
-
-		if(strcpy(command,NEW_USER) == 0){
-
-		}
-		else if(strcpy(command,NEW_USER) == 0){
-
-		}else if(strcpy(command,NEW_MESSAGE) == 0){
+		if(command == NEW_USER){
+			User* user = (User*)buffer;
+		}else if(command == NEW_MESSAGE){
 
 		}
-		else if(strcpy(command,NEW_USER) == 0){
-
-		}
-		else if(strcpy(command,NEW_USER) == 0){
-
-		}
-
 
 		/*NewClientInfo * info = malloc(sizeof(NewClientInfo)); ;
 		char* piece = strtok(buffer,",");
 		info->id = atoi(piece);
 		piece = strtok(buffer,",");
 		strcpy(info->pathFIFO,piece);*/
-		
 	}
 
 }
 
 
-Node* msgsHead;
-Node* topicsHead;
-Node* usersHead;
+
 
 int main(int argc,char* argv[]){
+		
 	//check if process already running
 	if (isServerRunning()){
 		printf("Program already running\nExiting\n");
@@ -62,23 +51,23 @@ int main(int argc,char* argv[]){
 
 	//Start words verifier
 	{
-		int verifPipe[2];
-		pipe(verifPipe);
-		int reciveVerifPipe[2];
-		pipe(reciveVerifPipe);
+		int sendPipe[2];
+		pipe(sendPipe);
+		int recievePipe[2];
+		pipe(recievePipe);
 		
 		int childPid = fork();
 		if(childPid == 0){
 			close(0);
-			dup(verifPipe[0]);
-			close(verifPipe[0]);
-			close(verifPipe[1]);
+			dup(sendPipe[0]);
+			close(sendPipe[0]);
+			close(sendPipe[1]);
 
 
 			close(1);
-			dup(reciveVerifPipe[1]);
-			close(reciveVerifPipe[0]);
-			close(reciveVerifPipe[1]);
+			dup(recievePipe[1]);
+			close(recievePipe[0]);
+			close(recievePipe[1]);
 
 			//start verifier on child process
 			char* badWordsFile = getenv(WORDSNOT);
@@ -91,12 +80,13 @@ int main(int argc,char* argv[]){
 			exit(0);
 			//Exec gave error
 		} else {
-			close(verifPipe[0]);
-			close(reciveVerifPipe[1]);
+			close(sendPipe[0]);
+			close(recievePipe[1]);
 		}
-		sendToVerifier = verifPipe[1];
-		recieveFromVerifier = reciveVerifPipe[0];
+		sendToVerifier = sendPipe[1];
+		recieveFromVerifier = recievePipe[0];
 	}
+
 	//Max bad Words
 	{
 		char* temp = getenv(MAXNOT);
@@ -117,9 +107,9 @@ int main(int argc,char* argv[]){
 	topicsHead = new_Node(NULL);
 	usersHead = new_Node(NULL);
 	int filter = 0;
-	/*List* msgsHead = new_List();
-	List* topicsHead = new_List();
-	List* usersHead = new_List();*/
+	/*List* msgs = new_List();
+	List* topics = new_List();
+	List* users = new_List();*/
 
 	signal(SIGINT, shutdown);
 
@@ -213,19 +203,19 @@ int main(int argc,char* argv[]){
 
 //Done
 int verifyBadWords(Message* message){
-
 	write(sendToVerifier,message->title,strlen(message->title));
+	write(sendToVerifier,"\n",1);
 	write(sendToVerifier,message->topic,strlen(message->topic));
+	write(sendToVerifier,"\n",1);
 	write(sendToVerifier,message->body,strlen(message->body));
-
-	write(sendToVerifier,MSGEND,strlen(MSGEND));
+	write(sendToVerifier,"\n",1);
+	write(sendToVerifier,MSGEND,MSGEND_L);
 
 	int const bufferSize = 4;
-	char* buffer[bufferSize];
+	char buffer[bufferSize];
 	read(recieveFromVerifier,buffer,bufferSize * sizeof(char));
 
 	int nBadWords = atoi(buffer);
-
 	return nBadWords;
 }
 
@@ -276,8 +266,6 @@ void shutdown(int signal){
 	Node* curr = usersHead;
 	while(curr != NULL){
 		//TODO
-		
-
 
 		curr = curr->next;
 	}
