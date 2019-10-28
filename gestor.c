@@ -46,12 +46,21 @@ int main(int argc,char* argv[]){
 	//start verificador
 	int verifPipe[2];
 	pipe(verifPipe);
+	int reciveVerifPipe[2];
+	pipe(reciveVerifPipe);
+	
 	int childPid = fork();
 	if(childPid == 0){
 		close(0);
 		dup(verifPipe[0]);
 		close(verifPipe[0]);
 		close(verifPipe[1]);
+
+
+		close(1);
+		dup(reciveVerifPipe[1]);
+		close(reciveVerifPipe[0]);
+		close(reciveVerifPipe[1]);
 
 		//start verifier on child process
 		char badWordsFile[] = "badwords.txt";
@@ -60,7 +69,14 @@ int main(int argc,char* argv[]){
 		printf("Bad Word Verifier Not started.");
 		exit(0);
 		//Exec gave error
+	}else
+	{
+		close(verifPipe[0]);
+		close(reciveVerifPipe[1]);
 	}
+	
+
+	
 
 	signal(SIGINT, shutdown);
 
