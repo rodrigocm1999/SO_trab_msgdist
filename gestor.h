@@ -3,7 +3,21 @@
 
 #define DELIM " \n"
 
-void verifyBadWords();
+#define WORDSNOT "WORDSNOT"
+#define DEFAULTWORDSNOT "./badwords.txt"
+#define MAXNOT "MAXNOT"
+#define DEFAULTMAXNOT 2
+
+#define MSGEND "##MSGEND##"
+
+
+int sendToVerifier;
+int recieveFromVerifier;
+int maxbadWords;
+
+
+
+int verifyBadWords(Message* message);
 Message* new_Message();
 
 int msgId = 0;
@@ -12,6 +26,7 @@ typedef struct {
 	int id;
 	char pathFIFO[32];
 }NewClientInfo;
+
 
 
 
