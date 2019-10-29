@@ -7,3 +7,11 @@ int isServerRunning(){
     fclose(ptr);
     return 1;
 }
+
+void joinCommandWithOther(Command* command,void* other, size_t otherSize){
+    char buffer[sizeof(Command) + otherSize + 1];
+
+    //buffer = (*command);
+
+
+}

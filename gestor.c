@@ -219,13 +219,6 @@ int verifyBadWords(Message* message){
 	return nBadWords;
 }
 
-Message* new_Message(){
-	Message* obj = malloc(sizeof(Message));
-	obj->id = ++msgId;
-
-	return obj;
-}
-
 void printTopics(Node* head){
 	Node* curr = head;
 	printf("Topics : %d total\n", LinkedList_getSize(head));
@@ -266,7 +259,7 @@ void shutdown(int signal){
 	Node* curr = usersHead;
 	while(curr != NULL){
 		//TODO
-
+		write();
 		curr = curr->next;
 	}
 

@@ -25,13 +25,6 @@ Message* new_Message();
 
 int msgId = 0;
 
-/*typedef struct {
-	int pid;
-	char username[64];
-}NewClientInfo;*/
-
-
-
 
 void* handleClient(void* data);
 

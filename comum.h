@@ -20,7 +20,7 @@
 
 
 
-typedef struct{
+typedef struct Message{
 	int id;
 	char username[32];
 	char topic[20];
@@ -29,12 +29,25 @@ typedef struct{
 	int duration;
 }Message;
 
-typedef struct {
+typedef struct User{
 	pid_t pid;
-	char name[32];
+	char username[32];
+	FILE* fifo;
 	char** topics;
 }User;
 
+typedef struct NewClientInfo{
+	pid_t pid;
+	char username[32];
+	char pathToFifo[64];
+} NewClientInfo;
+
+typedef struct Command{
+	int cmd;
+	char username[32];
+} Command;
+
+void joinCommandWithOther(Command* command,void* other, size_t otherSize);
 
 
 int isServerRunning();
