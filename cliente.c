@@ -24,6 +24,7 @@ int main(int argc,char* argv[]){
 		exit(0);
 	}
 
+	// printf("ola");
 	cfg.server = open(LISTENERPATH,O_WRONLY);
 	{
 		NewClientInfo newClient;
@@ -98,4 +99,31 @@ void* fifoListener(void* data){
 	
 
 
+}
+
+void newMessage(char * username){
+	char topic[20], titulo[100];
+	char msg[1000];
+
+
+	printf("Topico da menssagem: ");
+	scanf("%s",topic);
+
+
+	printf("Titulo da menssagem: ");
+	scanf("%s",titulo);
+
+
+	printf("Mensagem: ");
+	scanf("%s",msg);
+
+	Message newMsg(username,topic,titulo,msg);
+
+
+	printf("Mensagem enviada");
+
+}
+
+void ListTopics(	){
+	
 }
