@@ -41,9 +41,9 @@ Node* LinkedList_pop(LinkedList* list,void* obj){
 }
 
 int LinkedList_getSize(LinkedList* list){
-	int size = 1;
+	int size = 0;
 	Node* curr = list->head;
-	while(curr->next != NULL){
+	while(curr != NULL){
 		++size;
 		curr = curr->next;
 	}
