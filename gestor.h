@@ -12,18 +12,18 @@
 #define MSGEND_L 11
 
 
-typedef struct{
+typedef struct ServerConfig{
    int sendVerif;
    int recieveVerif;
    unsigned int maxbadWords;
    unsigned int msgId;
-
+   LinkedList msgs;
+   LinkedList topics;
+   LinkedList users;
 }ServerConfig;
 
 
-Node* msgsHead;
-Node* topicsHead;
-Node* usersHead;
+
 
 
 

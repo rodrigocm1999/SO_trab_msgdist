@@ -65,9 +65,9 @@ int main(int argc,char* argv[]){
 
 
 	// Create lists for memory objects
-	msgsHead = new_Node(NULL);
-	topicsHead = new_Node(NULL);
-	usersHead = new_Node(NULL);
+	cfg.msgs;
+	cfg.topics;
+	cfg.users;
 	int filter = 0;
 	/*List* msgs = new_List();
 	List* topics = new_List();
@@ -103,20 +103,20 @@ int main(int argc,char* argv[]){
 		}
 
 		else if(strcmp(cmd,"users") == 0){
-			printUsers(usersHead);
+			printUsers(cfg.users.head);
 		}
 
 		else if(strcmp(cmd,"topics") == 0){
-			printUsers(topicsHead);
+			printTopics(cfg.topics.head);
 		}
 
 		else if(strcmp(cmd,"msg") == 0){
-			printMsgs(msgsHead);
+			printMsgs(cfg.msgs.head);
 		}
 
 		else if(strcmp(cmd,"topic") == 0){
 			char* topic = strtok(command,DELIM);
-			Node* curr = msgsHead;
+			Node* curr = cfg.msgs.head;
 			while( curr != NULL ){
 				Message* currMessage = (Message*)curr->data;
 				if(strcmp(currMessage->topic,topic) == 0){
@@ -203,7 +203,7 @@ void printUsers(Node* head){
 
 void printMsgs(Node* head){
 	Node* curr = head;
-	printf("Msgs on Memory : %d total\n", LinkedList_getSize(head) );
+	printf("Msgs on Memory : %d total\n", LinkedList_getSize(cfg.msgs.head));
 	
 	while(curr != NULL){
 		//TODO
@@ -217,7 +217,7 @@ void printMsgs(Node* head){
 void shutdown(int signal){
 	printf("Exiting\n");
 	unlink(LISTENERPATH);
-	Node* curr = usersHead;
+	Node* curr = cfg.users.head;
 	while(curr != NULL){
 		//TODO
 		curr = curr->next;
@@ -269,7 +269,7 @@ void* clientMessageReciever(void* data){
 			} else{
 				printf("[INFO]Opened client fifo\n");
 			}
-			//TODO adicionar o user á lista
+			//TODO adicionar o user á
 
 
 		}else if(command->cmd == NEW_MESSAGE){
