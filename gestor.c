@@ -1,45 +1,6 @@
 #include "gestor.h"
 
-void* clientMessageReciever(void* data){
-	//char mainFIFO[] = "./fifos/listener";
-	char mainFIFO[] = "/tmp/gestorListenerFifo";
-	int fifo = open(mainFIFO,O_RDONLY);
-	if(fifo == -1){
-		mkfifo(mainFIFO,0666);
-		fifo = open(mainFIFO,O_RDONLY);
-		if(fifo == -1 ){
-			printf("Main client listener creation error (FIFO)\n");
-			printf("Error: %d\n",errno);
-			exit(0);
-		}
-	}
-	
-	while(1){
-		int const bufferSize = 2048;
-		char buff[bufferSize];
-		char* buffer = buff;
-
-		read(fifo, buff, bufferSize * sizeof(char));
-		int command = atoi(buffer);
-		buffer = buffer + sizeof(int);
-
-		if(command == NEW_USER){
-			User* user = (User*)buffer;
-		}else if(command == NEW_MESSAGE){
-
-		}
-
-		/*NewClientInfo * info = malloc(sizeof(NewClientInfo)); ;
-		char* piece = strtok(buffer,",");
-		info->id = atoi(piece);
-		piece = strtok(buffer,",");
-		strcpy(info->pathFIFO,piece);*/
-	}
-
-}
-
-
-
+ServerConfig cfg;
 
 int main(int argc,char* argv[]){
 		
@@ -56,6 +17,12 @@ int main(int argc,char* argv[]){
 		int recievePipe[2];
 		pipe(recievePipe);
 		
+		char* badWordsFile = getenv(WORDSNOT);
+		if(badWordsFile == NULL){
+			badWordsFile = DEFAULTWORDSNOT;
+		}
+		printf("[INFO]WORDSNOT = %s\n",badWordsFile);
+
 		int childPid = fork();
 		if(childPid == 0){
 			close(0);
@@ -63,42 +30,37 @@ int main(int argc,char* argv[]){
 			close(sendPipe[0]);
 			close(sendPipe[1]);
 
-
 			close(1);
 			dup(recievePipe[1]);
 			close(recievePipe[0]);
 			close(recievePipe[1]);
 
-			//start verifier on child process
-			char* badWordsFile = getenv(WORDSNOT);
-			if(badWordsFile == NULL){
-				badWordsFile = DEFAULTWORDSNOT;
-			}
+			//start verifier on child process			
 			char ver[] = "verificador";
 			execl(ver, ver, badWordsFile, (char*)NULL);
-			printf("Bad Word Verifier Not started.");
+			printf("[ERROR]Bad Word Verifier Not started.");
 			exit(0);
 			//Exec gave error
 		} else {
 			close(sendPipe[0]);
 			close(recievePipe[1]);
 		}
-		sendToVerifier = sendPipe[1];
-		recieveFromVerifier = recievePipe[0];
+		cfg.sendVerif = sendPipe[1];
+		cfg.recieveVerif = recievePipe[0];
 	}
 
 	//Max bad Words
 	{
 		char* temp = getenv(MAXNOT);
 		if (temp != NULL){
-			maxbadWords = atoi(temp);
+			cfg.maxbadWords = atoi(temp);
 		}else{
-			maxbadWords = DEFAULTMAXNOT;
+			cfg.maxbadWords = DEFAULTMAXNOT;
 		}
+		printf("[INFO]MAXNOT = %d\n",cfg.maxbadWords);
 	}
-
 	// Start listener for messages
-	pthread_t listenerThread; 
+	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,clientMessageReciever,(void*)NULL);
 
 
@@ -112,8 +74,6 @@ int main(int argc,char* argv[]){
 	List* users = new_List();*/
 
 	signal(SIGINT, shutdown);
-
-	printf("Started\n");
 
 	printf("Write \"help\" to get command information\n");
 
@@ -185,7 +145,7 @@ int main(int argc,char* argv[]){
 
 		else if(strcmp(cmd,"help") == 0){
 			FILE* file = fopen("help.txt","r");
-			int const bufferSize = 1024;
+			int const bufferSize = 2048;
 			char buffer[bufferSize];
 			int sdas = fread(buffer,sizeof(char),bufferSize,file);
 			printf("\n");
@@ -203,17 +163,17 @@ int main(int argc,char* argv[]){
 
 //Done
 int verifyBadWords(Message* message){
-	write(sendToVerifier,message->title,strlen(message->title));
-	write(sendToVerifier,"\n",1);
-	write(sendToVerifier,message->topic,strlen(message->topic));
-	write(sendToVerifier,"\n",1);
-	write(sendToVerifier,message->body,strlen(message->body));
-	write(sendToVerifier,"\n",1);
-	write(sendToVerifier,MSGEND,MSGEND_L);
+	write(cfg.sendVerif,message->title,strlen(message->title));
+	write(cfg.sendVerif,"\n",1);
+	write(cfg.sendVerif,message->topic,strlen(message->topic));
+	write(cfg.sendVerif,"\n",1);
+	write(cfg.sendVerif,message->body,strlen(message->body));
+	write(cfg.sendVerif,"\n",1);
+	write(cfg.sendVerif,MSGEND,MSGEND_L);
 
 	int const bufferSize = 4;
 	char buffer[bufferSize];
-	read(recieveFromVerifier,buffer,bufferSize * sizeof(char));
+	read(cfg.recieveVerif,buffer,bufferSize * sizeof(char));
 
 	int nBadWords = atoi(buffer);
 	return nBadWords;
@@ -256,13 +216,71 @@ void printMsgs(Node* head){
 
 void shutdown(int signal){
 	printf("Exiting\n");
+	unlink(LISTENERPATH);
 	Node* curr = usersHead;
 	while(curr != NULL){
 		//TODO
-		write();
 		curr = curr->next;
 	}
-
-
 	exit(0);
+}
+
+
+void accquireLock(){
+}
+
+
+void* clientMessageReciever(void* data){
+	
+	int result = mkfifo(LISTENERPATH,0666);
+	if(result != 0) {
+		printf("[ERROR]Creating listener fifo");
+	}
+	int fifo = open(LISTENERPATH,O_RDWR);
+	if(fifo == -1 ){
+		printf("[ERROR]Main client listener creation error (FIFO)\n");
+		exit(0);
+	}
+
+	
+	while(1){
+		int const bufferSize = 2048;
+		char buff[bufferSize];
+		char* buffer = buff;
+
+		int bCount = read(fifo, buffer, bufferSize * sizeof(char));
+		printf("[INFO]Recebeu bytes : %d\n",bCount);
+		Command* command = (Command*)buffer;
+		buffer = buffer + sizeof(Command);
+
+
+		printf("[INFO]Recebeu commando : %d \n",command->cmd);
+
+		if(command->cmd == NEW_USER){
+			NewClientInfo* info = (NewClientInfo*)buffer;
+			User* user = malloc(sizeof(User));
+			user->pid = info->pid;
+			strcpy(user->username,info->username);
+			printf("[INFO]Client fifo : %s\n",info->pathToFifo);
+
+			FILE* file = fopen(info->pathToFifo,"w");
+			if(file == NULL){
+				printf("[ERROR]Error opening user fifo\n");
+			} else{
+				printf("[INFO]Opened client fifo\n");
+			}
+			//TODO adicionar o user á lista
+
+
+		}else if(command->cmd == NEW_MESSAGE){
+
+		}
+
+		/*NewClientInfo * info = malloc(sizeof(NewClientInfo)); ;
+		char* piece = strtok(buffer,",");
+		info->id = atoi(piece);
+		piece = strtok(buffer,",");
+		strcpy(info->pathFIFO,piece);*/
+	}
+
 }

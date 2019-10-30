@@ -11,25 +11,31 @@
 #define MSGEND "##MSGEND##\n"
 #define MSGEND_L 11
 
+
+typedef struct{
+   int sendVerif;
+   int recieveVerif;
+   unsigned int maxbadWords;
+   unsigned int msgId;
+
+}ServerConfig;
+
+
 Node* msgsHead;
 Node* topicsHead;
 Node* usersHead;
 
 
-int sendToVerifier;
-int recieveFromVerifier;
-int maxbadWords;
 
 int verifyBadWords(Message* message);
 Message* new_Message();
 
-int msgId = 0;
-
-
-void* handleClient(void* data);
+void* clientMessageReciever(void* data);
 
 void printTopics(Node* head);
 void printUsers(Node* head);
 void printMsgs(Node* head);
 
 void shutdown(int signal);
+
+void accquireLock();

@@ -1,28 +1,49 @@
 #include "cliente.h"
 
+ClientConfig cfg;
 
 int main(int argc,char* argv[]){
-
 	if(!isServerRunning()){
 		printf("Server not running\nExiting\n");
 		exit(0);
 	}
 	
-	char username[30];
 	printf("Username: \n");
-	scanf("%s",username);
+	scanf("%s",cfg.username);
 
 	//Criar fifo para servidor enviar coisas para cliente
 	// Enviar PID, username e talvez path para FIFO
 	// criar fifo em /tmp/
+	sprintf (cfg.fifoPath,"/tmp/%d",getpid());
+	mkfifo(cfg.fifoPath,0666);
+	cfg.fifo = open(cfg.fifoPath,O_RDWR);
+	printf("Sarting \n");
+	if(cfg.fifo == -1 ){
+		printf("fifo creation error (FIFO)\n");
+		printf("Error: %d\n",errno);
+		exit(0);
+	}
 
-	int server = open(LISTENERPATH,O_RDONLY);
+	cfg.server = open(LISTENERPATH,O_WRONLY);
+	{
+		NewClientInfo newClient;
+		strcpy(newClient.username,cfg.username);
+		newClient.pid = getpid();
+		strcpy(newClient.pathToFifo,cfg.fifoPath);
 
-
+		Command command;
+		command.cmd = NEW_USER;
+		strcpy(command.username,cfg.username);
+		
+		Buffer buffer = joinCommandStruct(&command,&newClient,sizeof(NewClientInfo));
+		
+		int bWriten = write(cfg.server,buffer.ptr,buffer.size);
+		free(buffer.ptr);
+		printf("Command: %d\tSize: %d\tBytes Written: %d\n",command.cmd,buffer.size,bWriten);
+	}
 	// Criar thread para receber info do servidor
 	pthread_t listenerThread; 
 	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
-
 
 	int choice;
 	while(1){
