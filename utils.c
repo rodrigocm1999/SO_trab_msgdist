@@ -1,10 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "utils.h"
 
 
-Node* LinkedList_getNode(Node* head,void* obj){
-	Node* curr = head;
+//LinkedList ----------------------------------------------------------
+
+
+Node* LinkedList_getNode(LinkedList* list,void* obj){
+	Node* curr = list->head;
 	while(curr != NULL){
 		if (curr->data == obj){
 			return curr;
@@ -13,30 +14,21 @@ Node* LinkedList_getNode(Node* head,void* obj){
 	}
 }
 
-void LinkedList_detachNode(Node* node){
-	if(node->previous != NULL){
-		node->previous->next = node->next;
-	}
-	if(node->next != NULL){
-		node->next->previous = node->previous;
-	}
-}
-
-void LinkedList_append(Node* head,Node* newNode){
-	Node* last = LinkedList_getLast(head);
-	last->next = newNode;
+void LinkedList_append(LinkedList* list,void* newObj){
+	Node* last = Node_getLast(list->head);
+	Node* newNode = new_Node(newObj);
+	last->next  = newNode;
 	newNode->previous = last;
 }
 
-Node* LinkedList_prepend(Node* head,Node* newNode){
-	Node* temp = head;
-	head = newNode;
-	newNode->next = temp;
-	return head;
+void LinkedList_prepend(LinkedList* list,void* newObj){
+	Node* newNode = new_Node(newObj);
+	newNode->next = list->head;
+	list->head = newNode;
 }
 
-Node* LinkedList_pop(Node* head,void* obj){
-	Node* node = LinkedList_getLast(head);
+Node* LinkedList_pop(LinkedList* list,void* obj){
+	Node* node = Node_getLast(list->head);
 	if(node != NULL){
 		if(node->previous != NULL){
 			node->previous->next = node->next;
@@ -48,40 +40,29 @@ Node* LinkedList_pop(Node* head,void* obj){
 	return node;
 }
 
-Node* LinkedList_getLast(Node* head){
-	Node* curr = head;
-	while(curr->next != NULL){
-		curr = curr->next;
-	}
-	return curr;
-}
-Node* LinkedList_getHead(Node* node){
-	while(node->previous != NULL){
-		node = node->previous;
-	}
-	return node;
-}
-int LinkedList_getSize(Node* node){
+int LinkedList_getSize(LinkedList* list){
 	int size = 1;
-	Node* curr = node;
+	Node* curr = list->head;
 	while(curr->next != NULL){
 		++size;
 		curr = curr->next;
 	}
 	return size;
 }
-void LinkedList_prune(Node* node){
-	Node* curr = node;
+void LinkedList_prune(LinkedList* list){
+	Node* curr = list->head;
 	while(curr != NULL){
 		if(curr->data == NULL){
 			void* toDelete = curr;
 			curr = curr->next;
-			LinkedList_detachNode(toDelete);
+			Node_detach(toDelete);
 		}else{
 			curr = curr->next;
 		}
 	}
 }
+
+//Node --------------------------------------------------------
 
 Node* new_Node(void* data){
 	Node* ptr = malloc(sizeof(Node));
@@ -94,6 +75,35 @@ Node* new_Node(void* data){
 int Node_hasNext(Node* node){
 	return node->next != NULL ? 1 : 0;
 }
+
+Node* Node_getHead(Node* node){
+	while(node->previous != NULL){
+		node = node->previous;
+	}
+	return node;
+}
+Node* Node_getLast(Node* head){
+	Node* curr = head;
+	while(curr->next != NULL){
+		curr = curr->next;
+	}
+	return curr;
+}
+
+void Node_detach(Node* node){
+	if(node->previous != NULL){
+		node->previous->next = node->next;
+	}
+	if(node->next != NULL){
+		node->next->previous = node->previous;
+	}
+}
+
+
+
+
+
+//ArrayList ---------------------------------------------
 
 #define INITIALARRAYSIZE 4
 #define ARRAYEXPANDMULTIPLIER 2
