@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 typedef struct Node{
 	void* data;
@@ -6,17 +7,22 @@ typedef struct Node{
 	struct Node* previous;
 }Node;
 
-Node* LinkedList_getNode(Node* head,void* obj);
-void LinkedList_detachNode(Node* node);
-void LinkedList_append(Node* head,Node* newNode);
-Node* LinkedList_prepend(Node* head,Node* newNode);
-Node* LinkedList_pop(Node* head,void* obj);
-Node* LinkedList_getLast(Node* head);
-Node* LinkedList_getHead(Node* node);
-int LinkedList_getSize(Node* node);
-void LinkedList_prune(Node* node);
+typedef struct LinkedList{
+	void* head;
+}LinkedList;
+
+Node* LinkedList_getNode(LinkedList* list,void* obj);
+void LinkedList_append(LinkedList* list,void* newObj);
+void LinkedList_prepend(LinkedList* list,void* newObj);
+Node* LinkedList_pop(LinkedList* list,void* obj);
+int LinkedList_getSize(LinkedList* list);
+void LinkedList_prune(LinkedList* list);
+
 Node* new_Node(void* data);
 int Node_hasNext(Node* node);
+Node* Node_getHead(Node* node);
+Node* Node_getLast(Node* node);
+void Node_detach(Node* node);
 
 typedef struct List{
 	void** arr;
