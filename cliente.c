@@ -58,7 +58,28 @@ int main(int argc,char* argv[]){
 			printf("Exiting\n");
 			exit(0);
 			break;
-		case 1: // Write Message
+		case 1: 
+				printf("Ola");
+				char topic[20], titulo[100];
+				char msg[1000];
+
+
+				printf("Topico da menssagem: ");
+				scanf("%s",topic);
+
+
+				printf("Titulo da menssagem: ");
+				scanf("%s",titulo);
+
+
+				printf("Mensagem: ");
+				scanf("%s",msg);
+
+				Message newMsg(username,topic,titulo,msg);
+
+
+				printf("Mensagem enviada");
+
 			break;
 
 		case 2: // List Topics
@@ -100,8 +121,8 @@ void* fifoListener(void* data){
 
 
 }
-
-void newMessage(char * username){
+/*
+void newMessage(char username){
 	char topic[20], titulo[100];
 	char msg[1000];
 
@@ -126,4 +147,4 @@ void newMessage(char * username){
 
 void ListTopics(	){
 	
-}
+}*/
