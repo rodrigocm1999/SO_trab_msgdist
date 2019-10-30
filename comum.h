@@ -49,7 +49,7 @@ typedef struct NewClientInfo{
 typedef struct Command{
 	int cmd;
 	char username[USERNAME_L];
-} Command;
+}Command;
 
 typedef struct Pointer{
 	void* ptr;
