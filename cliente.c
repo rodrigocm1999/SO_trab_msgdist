@@ -3,12 +3,13 @@
 ClientConfig cfg;
 
 int main(int argc,char* argv[]){
+
 	if(!isServerRunning()){
 		printf("Server not running\nExiting\n");
 		exit(0);
 	}
 	
-
+	signal(SIGINT,shutdown);
 	printf("%d\n",getpid());
 	printf("Username: \n");
 	scanf("%s",cfg.username);
@@ -23,7 +24,7 @@ int main(int argc,char* argv[]){
 	}
 
 	cfg.fifo = open(cfg.fifoPath,O_RDWR);
-	printf("Sarting \n");
+	printf("Starting \n");
 	if(cfg.fifo == -1 ){
 		printf("fifo creation error (FIFO)\n");
 		printf("Error: %d\n",errno);
@@ -40,6 +41,7 @@ int main(int argc,char* argv[]){
 
 		sendToServer(NEW_USER,&newClient,sizeof(NewClientInfo));
 	}
+	pause();
 	// Criar thread para receber info do servidor
 	pthread_t listenerThread; 
 	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
@@ -54,7 +56,7 @@ int main(int argc,char* argv[]){
 		{
 		case 0: // Exit
 			printf("Exiting\n");
-			shutdown();
+			shutdown(SIGINT);
 			break;
 		case 1:
 
@@ -126,15 +128,17 @@ void* fifoListener(void* data){
 		buffer = buffer + sizeof(Command);
 
 		if(command->cmd == SERVER_SHUTDOWN){
-			shutdown();
+			shutdown(SIGINT);
 		}
 		
 
 	}
 }
 
-void shutdown(){
+void shutdown(int signal){
 	printf("Shuting Down\n");
+	sendToServer(USER_LEAVING,NULL,0);
+
 	close(cfg.server);
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
@@ -152,6 +156,7 @@ int sendToServer(int cmd,void* other,size_t size){
 	command.clientPid = getpid();
 	command.structSize = size;
 	strcpy(command.username,cfg.username);
+	
 	Buffer buffer = joinCommandStruct(&command,other,size);
 	int written = write(cfg.server,buffer.ptr,buffer.size);
 	free(buffer.ptr);

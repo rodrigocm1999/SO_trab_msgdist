@@ -1,5 +1,4 @@
 #include "comum.h"
-#include "utils.h"
 
 #define DELIM " \n"
 
@@ -15,6 +14,7 @@
 typedef struct ServerConfig{
    int sendVerif;
    int recieveVerif;
+   int filter;
    unsigned int maxbadWords;
    unsigned int msgId;
    LinkedList msgs;

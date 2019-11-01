@@ -8,6 +8,7 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include "utils.h"
 
 #define LISTENERPATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32
@@ -18,7 +19,7 @@
 //Protocol
 #define SERVER_SHUTDOWN -10
 #define NEW_USER 10
-#define KICK_USER 11
+#define USER_LEAVING 11
 #define NEW_MESSAGE 20
 #define GET_TOPICS 30
 #define HEARTBEAT_CHECK 40
@@ -39,7 +40,7 @@ typedef struct User{
 	pid_t pid;
 	char username[USERNAME_L];
 	FILE* fifo;
-	char** topics;
+	LinkedList topics;
 }User;
 
 typedef struct NewClientInfo{

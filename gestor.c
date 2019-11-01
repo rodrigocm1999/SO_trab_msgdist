@@ -4,13 +4,36 @@
 ServerConfig cfg;
 
 int main(int argc,char* argv[]){	
-	close(2);
-	dup(1);
+	cfg.users.head = NULL;
+	cfg.topics.head = NULL;
+	cfg.msgs.head = NULL;
+	//check for arguments and already running server
+	{
+		int checkServerRunning = 1;
+		int res;
+		while ((res = getopt(argc,argv,"f")) != -1){
+			switch (res)
+			{
+			case 'f':
+				printf("[INFO] Using force start option\n");
+				if(isServerRunning()){
+					printf("[INFO] Deleting old listener FIFO\n");
+					unlink(LISTENERPATH);
+				}
+				checkServerRunning = 0;
+				break;
+			
+			default:
+				printf("Unsuported Option\n-f = force start (used after crash or kill)\n");
+				break;
+			}
 
-	//check if process already running
-	if (isServerRunning()){
-		printf("Program already running\nExiting\n");
-		exit(0);
+		}
+		//check for already running server
+		if(checkServerRunning && !isServerRunning()){
+			printf("Program already running\nExiting\n");
+			exit(0);
+		}
 	}
 
 	//Start words verifier
@@ -24,7 +47,7 @@ int main(int argc,char* argv[]){
 		if(badWordsFile == NULL){
 			badWordsFile = DEFAULTWORDSNOT;
 		}
-		printf("[INFO]WORDSNOT = %s\n",badWordsFile);
+		printf("[INFO] WORDSNOT = %s\n",badWordsFile);
 
 		int childPid = fork();
 		if(childPid == 0){
@@ -41,7 +64,7 @@ int main(int argc,char* argv[]){
 			//start verifier on child process			
 			char ver[] = "verificador";
 			execl(ver, ver, badWordsFile, (char*)NULL);
-			printf("[ERROR]Bad Word Verifier Not started.");
+			fprintf(stderr,"[ERROR] Bad Word Verifier Not started.\n");
 			exit(0);
 			//Exec gave error
 		} else {
@@ -60,8 +83,9 @@ int main(int argc,char* argv[]){
 		}else{
 			cfg.maxbadWords = DEFAULTMAXNOT;
 		}
-		printf("[INFO]MAXNOT = %d\n",cfg.maxbadWords);
+		printf("[INFO] MAXNOT = %d\n",cfg.maxbadWords);
 	}
+	
 	// Start listener for messages
 	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,clientMessageReciever,(void*)NULL);
@@ -71,10 +95,7 @@ int main(int argc,char* argv[]){
 	cfg.msgs;
 	cfg.topics;
 	cfg.users;
-	int filter = 0;
-	/*List* msgs = new_List();
-	List* topics = new_List();
-	List* users = new_List();*/
+	cfg.filter = 1;
 
 	signal(SIGINT, shutdown);
 
@@ -91,13 +112,13 @@ int main(int argc,char* argv[]){
 			char* token = strtok(NULL,DELIM);
 			if(token != NULL){
 				if(strcmp(token,"on") == 0){
-					filter = 1;
+					cfg.filter = 1;
 					printf("Filter is on\n");
 				}else if(strcmp(token,"off") == 0){
-					filter = 0;
+					cfg.filter = 0;
 					printf("Filter is off\n");
 				}else if(strcmp(token,"status") == 0){
-					if(filter == 0) printf("Filter is off\n");
+					if(cfg.filter == 0) printf("Filter is off\n");
 					else printf("Filter is on\n");
 				}
 			}else{
@@ -169,7 +190,8 @@ void* clientMessageReciever(void* data){
 	
 	int result = mkfifo(LISTENERPATH,0666);
 	if(result != 0) {
-		fprintf(stderr,"[ERROR]Creating listener fifo");
+		fprintf(stderr,"[ERROR]Creating listener fifo : already exists\n");
+		exit(0);
 	}
 	int fifo = open(LISTENERPATH,O_RDWR);
 	if(fifo == -1 ){
@@ -190,62 +212,89 @@ void* clientMessageReciever(void* data){
 		buffer = buffer + sizeof(Command);
 
 
-		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d\n\tUser: %s\n",
+		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d , User: %s\n",
 			command->cmd,command->structSize,command->clientPid,command->username);
 
-		if(command->cmd == NEW_USER){
-			NewClientInfo* info = (NewClientInfo*)buffer;
-			User* user = malloc(sizeof(User));
-			user->pid = info->pid;
-			strcpy(user->username,info->username);
-			printf("[INFO]Client fifo : %s, Username : %s\n",info->pathToFifo,info->username);
+		switch (command->cmd)
+		{
 
-			FILE* file = fopen(info->pathToFifo,"w");
-			if(file == NULL){
-				fprintf(stderr,"[ERROR]Error opening user fifo : Descarting User\n");
-			} else{
-				fprintf(stderr,"[INFO]Opened client fifo\n");
-				LinkedList_append(&cfg.users,user);
+			case NEW_USER:{
+				NewClientInfo* info = (NewClientInfo*)buffer;
+				User* user = malloc(sizeof(User));
+				user->pid = info->pid;
+				strcpy(user->username,info->username);
+				printf("[INFO]Client fifo : %s, Username : %s\n",info->pathToFifo,user->username);
+
+				FILE* file = fopen(info->pathToFifo,"w");
+				if(file == NULL){
+					fprintf(stderr,"[ERROR]Error opening user fifo : Descarting User\n");
+				} else{
+					fprintf(stderr,"[INFO]Opened client fifo\n");
+					LinkedList_append(&cfg.users,user);
+				}
+				
+				break;
 			}
-			
-		}else if(command->cmd == NEW_MESSAGE){
-			Message* message = (Message*)buffer;
-			int badWordsCount = verifyBadWords(message);
-			if(badWordsCount > cfg.maxbadWords){
-				fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
-			}else{
-				LinkedList_append(&cfg.msgs,message);
-				Node* currTopic = cfg.topics.head;
-				int found = 0;
-				while (currTopic != NULL){
-					if(currTopic->data != NULL){
-						char* topic = (char*)currTopic->data;
-						if(strcmp(topic,message->topic)==0){
-							found = 1;
-							break;
-						}
+
+
+			case NEW_MESSAGE:{			
+				Message* message = (Message*)buffer;
+				int allowed = 1;
+				if(cfg.filter){
+					int badWordsCount = verifyBadWords(message);
+					if(badWordsCount > cfg.maxbadWords){
+						allowed = 0;
+						fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
 					}
-					currTopic = currTopic->next;
 				}
-				if(found == 0){
-					char* topic = malloc(TOPIC_L);
-					strcpy(topic,message->topic);
-					LinkedList_append(&cfg.topics,topic);
+				if(allowed){
+					LinkedList_append(&cfg.msgs,message);
+					Node* currTopic = cfg.topics.head;
+					//check if topic exists
+					int found = 0;
+					while (currTopic != NULL){
+						if(currTopic->data != NULL){
+							char* topic = (char*)currTopic->data;
+							if(strcmp(topic,message->topic)==0){
+								found = 1;
+								break;
+							}
+						}
+						currTopic = currTopic->next;
+					}
+					//add new topic if doesn't exist
+					if(found == 0){
+						char* topic = malloc(TOPIC_L);
+						strcpy(topic,message->topic);
+						LinkedList_append(&cfg.topics,topic);
+					}
 				}
+				break;
+			}
+
+
+			case USER_LEAVING:{
+				//TODO
+				printf("Not Yet Implemented");
+
+				break;
+			}
+
+
+			default:{
+				printf("Not Recognized Command\n");
+				break;
 			}
 		}
-
-		/*NewClientInfo * info = malloc(sizeof(NewClientInfo)); ;
-		char* piece = strtok(buffer,",");
-		info->id = atoi(piece);
-		piece = strtok(buffer,",");
-		strcpy(info->pathFIFO,piece);*/
 	}
 
 }
 
-void* heartBeat(void* data){
-
+void* checkAllClientsState(void* data){
+	//Every ten seconds check if users have TODO 
+	while(1){
+		sleep(10);
+	}
 }
 
 //Done
@@ -282,8 +331,17 @@ void printUsers(Node* head){
 	printf("Users online : %d total\n", LinkedList_getSize(&cfg.users) );
 	
 	while(curr != NULL){
-		//TODO
-		printf("\t%s , subscribed to : \n",(char*)curr->data);
+		User* user = (User*)curr->data;
+		printf("\t%s , subscribed to : ",user->username);
+
+		Node* currTopic = user->topics.head;
+		while( currTopic != NULL )
+		{
+			printf(", %s",(char*)currTopic->data);
+			currTopic = currTopic->next;
+		}
+		printf("\n");
+
 		curr = curr->next;
 	}
 }
