@@ -1,9 +1,12 @@
 #include "gestor.h"
 
+
 ServerConfig cfg;
 
-int main(int argc,char* argv[]){
-		
+int main(int argc,char* argv[]){	
+	close(2);
+	dup(1);
+
 	//check if process already running
 	if (isServerRunning()){
 		printf("Program already running\nExiting\n");
@@ -120,9 +123,8 @@ int main(int argc,char* argv[]){
 			while( curr != NULL ){
 				Message* currMessage = (Message*)curr->data;
 				if(strcmp(currMessage->topic,topic) == 0){
-					
+					printf("Id : %d, Title : %s\n",currMessage->id,currMessage->title);	
 				}
-
 				curr = curr->next;
 			}
 		}
@@ -161,6 +163,91 @@ int main(int argc,char* argv[]){
 	return 0;
 }
 
+
+
+void* clientMessageReciever(void* data){
+	
+	int result = mkfifo(LISTENERPATH,0666);
+	if(result != 0) {
+		fprintf(stderr,"[ERROR]Creating listener fifo");
+	}
+	int fifo = open(LISTENERPATH,O_RDWR);
+	if(fifo == -1 ){
+		printf("[ERROR]Main client listener creation error (FIFO)\n");
+		fprintf(stderr,"[ERROR]Main client listener creation error (FIFO)\n");
+		exit(0);	
+	}
+
+	
+	while(1){
+		int const bufferSize = 2048;
+		char buff[bufferSize];
+		char* buffer = buff;
+
+		int bCount = read(fifo, buffer, bufferSize * sizeof(char));
+		fprintf(stderr,"[INFO]Recebeu bytes : %d\n",bCount);
+		Command* command = (Command*)buffer;
+		buffer = buffer + sizeof(Command);
+
+
+		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d\n\tUser: %s\n",
+			command->cmd,command->structSize,command->clientPid,command->username);
+
+		if(command->cmd == NEW_USER){
+			NewClientInfo* info = (NewClientInfo*)buffer;
+			User* user = malloc(sizeof(User));
+			user->pid = info->pid;
+			strcpy(user->username,info->username);
+			printf("[INFO]Client fifo : %s, Username : %s\n",info->pathToFifo,info->username);
+
+			FILE* file = fopen(info->pathToFifo,"w");
+			if(file == NULL){
+				fprintf(stderr,"[ERROR]Error opening user fifo : Descarting User\n");
+			} else{
+				fprintf(stderr,"[INFO]Opened client fifo\n");
+				LinkedList_append(&cfg.users,user);
+			}
+			
+		}else if(command->cmd == NEW_MESSAGE){
+			Message* message = (Message*)buffer;
+			int badWordsCount = verifyBadWords(message);
+			if(badWordsCount > cfg.maxbadWords){
+				fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
+			}else{
+				LinkedList_append(&cfg.msgs,message);
+				Node* currTopic = cfg.topics.head;
+				int found = 0;
+				while (currTopic != NULL){
+					if(currTopic->data != NULL){
+						char* topic = (char*)currTopic->data;
+						if(strcmp(topic,message->topic)==0){
+							found = 1;
+							break;
+						}
+					}
+					currTopic = currTopic->next;
+				}
+				if(found == 0){
+					char* topic = malloc(TOPIC_L);
+					strcpy(topic,message->topic);
+					LinkedList_append(&cfg.topics,topic);
+				}
+			}
+		}
+
+		/*NewClientInfo * info = malloc(sizeof(NewClientInfo)); ;
+		char* piece = strtok(buffer,",");
+		info->id = atoi(piece);
+		piece = strtok(buffer,",");
+		strcpy(info->pathFIFO,piece);*/
+	}
+
+}
+
+void* heartBeat(void* data){
+
+}
+
 //Done
 int verifyBadWords(Message* message){
 	write(cfg.sendVerif,message->title,strlen(message->title));
@@ -181,7 +268,7 @@ int verifyBadWords(Message* message){
 
 void printTopics(Node* head){
 	Node* curr = head;
-	printf("Topics : %d total\n", LinkedList_getSize(head));
+	printf("Topics : %d total\n", LinkedList_getSize(&cfg.topics));
 	
 	while(curr != NULL){
 		//TODO
@@ -192,7 +279,7 @@ void printTopics(Node* head){
 
 void printUsers(Node* head){
 	Node* curr = head;
-	printf("Users online : %d total\n", LinkedList_getSize(head) );
+	printf("Users online : %d total\n", LinkedList_getSize(&cfg.users) );
 	
 	while(curr != NULL){
 		//TODO
@@ -203,7 +290,7 @@ void printUsers(Node* head){
 
 void printMsgs(Node* head){
 	Node* curr = head;
-	printf("Msgs on Memory : %d total\n", LinkedList_getSize(cfg.msgs.head));
+	printf("Msgs on Memory : %d total\n", LinkedList_getSize(&cfg.msgs));
 	
 	while(curr != NULL){
 		//TODO
@@ -211,8 +298,6 @@ void printMsgs(Node* head){
 		curr = curr->next;
 	}
 }
-
-
 
 void shutdown(int signal){
 	printf("Exiting\n");
@@ -223,64 +308,4 @@ void shutdown(int signal){
 		curr = curr->next;
 	}
 	exit(0);
-}
-
-
-void accquireLock(){
-}
-
-
-void* clientMessageReciever(void* data){
-	
-	int result = mkfifo(LISTENERPATH,0666);
-	if(result != 0) {
-		printf("[ERROR]Creating listener fifo");
-	}
-	int fifo = open(LISTENERPATH,O_RDWR);
-	if(fifo == -1 ){
-		printf("[ERROR]Main client listener creation error (FIFO)\n");
-		exit(0);
-	}
-
-	
-	while(1){
-		int const bufferSize = 2048;
-		char buff[bufferSize];
-		char* buffer = buff;
-
-		int bCount = read(fifo, buffer, bufferSize * sizeof(char));
-		printf("[INFO]Recebeu bytes : %d\n",bCount);
-		Command* command = (Command*)buffer;
-		buffer = buffer + sizeof(Command);
-
-
-		printf("[INFO]Recebeu commando : %d \n",command->cmd);
-
-		if(command->cmd == NEW_USER){
-			NewClientInfo* info = (NewClientInfo*)buffer;
-			User* user = malloc(sizeof(User));
-			user->pid = info->pid;
-			strcpy(user->username,info->username);
-			printf("[INFO]Client fifo : %s\n",info->pathToFifo);
-
-			FILE* file = fopen(info->pathToFifo,"w");
-			if(file == NULL){
-				printf("[ERROR]Error opening user fifo\n");
-			} else{
-				printf("[INFO]Opened client fifo\n");
-			}
-			//TODO adicionar o user á
-
-
-		}else if(command->cmd == NEW_MESSAGE){
-
-		}
-
-		/*NewClientInfo * info = malloc(sizeof(NewClientInfo)); ;
-		char* piece = strtok(buffer,",");
-		info->id = atoi(piece);
-		piece = strtok(buffer,",");
-		strcpy(info->pathFIFO,piece);*/
-	}
-
 }

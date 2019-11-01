@@ -31,11 +31,10 @@ int verifyBadWords(Message* message);
 Message* new_Message();
 
 void* clientMessageReciever(void* data);
+void* heartBeat(void* data);
 
 void printTopics(Node* head);
 void printUsers(Node* head);
 void printMsgs(Node* head);
 
 void shutdown(int signal);
-
-void accquireLock();

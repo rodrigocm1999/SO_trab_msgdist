@@ -12,3 +12,5 @@ typedef struct{
 
 
 void* fifoListener(void* data);
+void shutdown();
+int sendToServer(int cmd,void* other,size_t size);

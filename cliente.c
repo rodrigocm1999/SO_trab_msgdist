@@ -8,6 +8,8 @@ int main(int argc,char* argv[]){
 		exit(0);
 	}
 	
+
+	printf("%d\n",getpid());
 	printf("Username: \n");
 	scanf("%s",cfg.username);
 
@@ -15,7 +17,11 @@ int main(int argc,char* argv[]){
 	// Enviar PID, username e talvez path para FIFO
 	// criar fifo em /tmp/
 	sprintf (cfg.fifoPath,"/tmp/%d",getpid());
-	mkfifo(cfg.fifoPath,0666);
+	int result = mkfifo(cfg.fifoPath,0666);
+	if(result != 0) {
+		fprintf(stderr,"[ERROR]Creating listener fifo");
+	}
+
 	cfg.fifo = open(cfg.fifoPath,O_RDWR);
 	printf("Sarting \n");
 	if(cfg.fifo == -1 ){
@@ -32,15 +38,7 @@ int main(int argc,char* argv[]){
 		newClient.pid = getpid();
 		strcpy(newClient.pathToFifo,cfg.fifoPath);
 
-		Command command;
-		command.cmd = NEW_USER;
-		strcpy(command.username,cfg.username);
-		
-		Buffer buffer = joinCommandStruct(&command,&newClient,sizeof(NewClientInfo));
-		
-		int bWriten = write(cfg.server,buffer.ptr,buffer.size);
-		free(buffer.ptr);
-		printf("Command: %d\tSize: %d\tBytes Written: %d\n",command.cmd,buffer.size,bWriten);
+		sendToServer(NEW_USER,&newClient,sizeof(NewClientInfo));
 	}
 	// Criar thread para receber info do servidor
 	pthread_t listenerThread; 
@@ -56,29 +54,29 @@ int main(int argc,char* argv[]){
 		{
 		case 0: // Exit
 			printf("Exiting\n");
-			exit(0);
+			shutdown();
 			break;
-		case 1: 
-				printf("Ola");
-				char topic[20], titulo[100];
-				char msg[1000];
+		case 1:
+
+			printf("Ola\n");
+			Message message;
+			char topic[20], titulo[100];
+			char msg[1000];
 
 
-				printf("Topico da menssagem: ");
-				scanf("%s",topic);
+			printf("Topico da menssagem: ");
+			scanf("%s",message.topic);
 
 
-				printf("Titulo da menssagem: ");
-				scanf("%s",titulo);
+			printf("Titulo da menssagem: ");
+			scanf("%s",message.title);
 
 
-				printf("Mensagem: ");
-				scanf("%s",msg);
-
-				Message newMsg(username,topic,titulo,msg);
+			printf("Mensagem: ");
+			scanf("%s",message.body);
 
 
-				printf("Mensagem enviada");
+			printf("Mensagem enviada\n");
 
 			break;
 
@@ -117,34 +115,45 @@ int main(int argc,char* argv[]){
 
 
 void* fifoListener(void* data){
-	
+	while(1){
+		int const bufferSize = 2048;
+		char buff[bufferSize];
+		char* buffer = buff;
 
+		int bCount = read(cfg.server, buffer, bufferSize * sizeof(char));
+		fprintf(stderr,"[INFO]Recebeu bytes : %d\n",bCount);
+		Command* command = (Command*)buffer;
+		buffer = buffer + sizeof(Command);
 
-}
-/*
-void newMessage(char username){
-	char topic[20], titulo[100];
-	char msg[1000];
+		if(command->cmd == SERVER_SHUTDOWN){
+			shutdown();
+		}
+		
 
-
-	printf("Topico da menssagem: ");
-	scanf("%s",topic);
-
-
-	printf("Titulo da menssagem: ");
-	scanf("%s",titulo);
-
-
-	printf("Mensagem: ");
-	scanf("%s",msg);
-
-	Message newMsg(username,topic,titulo,msg);
-
-
-	printf("Mensagem enviada");
-
+	}
 }
 
-void ListTopics(	){
+void shutdown(){
+	printf("Shuting Down\n");
+	close(cfg.server);
+	close(cfg.fifo);
+	unlink(cfg.fifoPath);
+	exit(0);
+}
+
+
+void ListTopics(){
 	
-}*/
+}
+
+int sendToServer(int cmd,void* other,size_t size){
+	Command command;
+	command.cmd = cmd;
+	command.clientPid = getpid();
+	command.structSize = size;
+	strcpy(command.username,cfg.username);
+	Buffer buffer = joinCommandStruct(&command,other,size);
+	int written = write(cfg.server,buffer.ptr,buffer.size);
+	free(buffer.ptr);
+	return written;
+}

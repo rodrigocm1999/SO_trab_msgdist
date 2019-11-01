@@ -9,18 +9,20 @@
 #include <sys/stat.h>
 #include <pthread.h>
 
-//path to listener fifo
 #define LISTENERPATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32
 #define TOPIC_L 20
 #define TITLE_L 100
 #define BODY_L 1000
 
+//Protocol
+#define SERVER_SHUTDOWN -10
 #define NEW_USER 10
-#define DEL_USER 11
+#define KICK_USER 11
 #define NEW_MESSAGE 20
-#define KILL_SERVER -10
-
+#define GET_TOPICS 30
+#define HEARTBEAT_CHECK 40
+#define HEARTBEAT_OK 41
 
 
 
@@ -48,7 +50,9 @@ typedef struct NewClientInfo{
 
 typedef struct Command{
 	int cmd;
+	pid_t clientPid;
 	char username[USERNAME_L];
+	size_t structSize;
 }Command;
 
 typedef struct Pointer{
