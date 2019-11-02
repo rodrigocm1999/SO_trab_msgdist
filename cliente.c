@@ -54,14 +54,16 @@ int main(int argc,char* argv[]){
 
 		switch (choice)
 		{
-		case 0: // Exit
+		case 0:{ // Exit
 			printf("Exiting\n");
 			shutdown(SIGINT);
 			break;
-		case 1:
+		}
+		case 1:{
 
 			printf("Ola\n");
 			Message message;
+			strcpy(message.username,cfg.username);
 			char topic[20], titulo[100];
 			char msg[1000];
 
@@ -77,26 +79,26 @@ int main(int argc,char* argv[]){
 			printf("Mensagem: ");
 			scanf("%s",message.body);
 
-
+			sendToServer(NEW_MESSAGE,&message,sizeof(Message));
 			printf("Mensagem enviada\n");
 
 			break;
-
-		case 2: // List Topics
+		}
+		case 2:{ // List Topics
 			break;
-
-		case 3: // List Titles in Topic
+		}
+		case 3:{ // List Titles in Topic
 			break;
-
-		case 4: // Read Message in Topic
+		}
+		case 4:{ // Read Message in Topic
 			break;
-
-		case 5: // Subscribe to Topic
+		}
+		case 5:{ // Subscribe to Topic
 			break;
-
-		case 6:// Unsubscribe to topic
+		}
+		case 6:{// Unsubscribe to topic
 			break;
-
+		}
 		default:
 			printf("Invalid Option\n");
 			break;
@@ -118,16 +120,17 @@ int main(int argc,char* argv[]){
 
 void* fifoListener(void* data){
 	while(1){
-		int const bufferSize = 2048;
+		int const bufferSize = 8192;
 		char buff[bufferSize];
-		char* buffer = buff;
+		void* buffer = buff;
 
-		int bCount = read(cfg.server, buffer, bufferSize * sizeof(char));
+		int bCount = read(cfg.fifo, buffer, bufferSize);
 		fprintf(stderr,"[INFO]Recebeu bytes : %d\n",bCount);
 		Command* command = (Command*)buffer;
 		buffer = buffer + sizeof(Command);
 
 		if(command->cmd == SERVER_SHUTDOWN){
+			printf("Server ");
 			shutdown(SIGINT);
 		}
 		
@@ -150,7 +153,6 @@ int sendToServer(int cmd,void* other,size_t size){
 	command.cmd = cmd;
 	command.clientPid = getpid();
 	command.structSize = size;
-	strcpy(command.username,cfg.username);
 	
 	Buffer buffer = joinCommandStruct(&command,other,size);
 	int written = write(cfg.server,buffer.ptr,buffer.size);

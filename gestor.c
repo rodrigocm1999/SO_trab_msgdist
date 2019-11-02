@@ -105,99 +105,100 @@ int main(int argc,char* argv[]){
 		printf("-> ");
 		fgets(command,512,stdin);
 		cmd = strtok(command,DELIM);
-		
-		if(strcmp(cmd,"filter") == 0){
-			char* token = strtok(NULL,DELIM);
-			if(token != NULL){
-				if(strcmp(token,"on") == 0){
-					cfg.filter = 1;
-					printf("Filter is on\n");
-				}else if(strcmp(token,"off") == 0){
-					cfg.filter = 0;
-					printf("Filter is off\n");
-				}else if(strcmp(token,"status") == 0){
-					if(cfg.filter == 0) printf("Filter is off\n");
-					else printf("Filter is on\n");
+		if(cmd != NULL){
+
+			if(strcmp(cmd,"filter") == 0){
+				char* token = strtok(NULL,DELIM);
+				if(token != NULL){
+					if(strcmp(token,"on") == 0){
+						cfg.filter = 1;
+						printf("Filter is on\n");
+					}else if(strcmp(token,"off") == 0){
+						cfg.filter = 0;
+						printf("Filter is off\n");
+					}else if(strcmp(token,"status") == 0){
+						if(cfg.filter == 0) printf("Filter is off\n");
+						else printf("Filter is on\n");
+					}
+				}else{
+					printf("\nInvalid filter option, available : on off status\n");
 				}
-			}else{
-				printf("\nInvalid filter option, available : on off status\n");
 			}
-		}
 
-		else if(strcmp(cmd,"users") == 0){
-			printUsers(cfg.users.head);
-		}
+			else if(strcmp(cmd,"users") == 0){
+				printUsers(cfg.users.head);
+			}
 
-		else if(strcmp(cmd,"topics") == 0){
-			printTopics(cfg.topics.head);
-		}
+			else if(strcmp(cmd,"topics") == 0){
+				printTopics(cfg.topics.head);
+			}
 
-		else if(strcmp(cmd,"msg") == 0){
-			printMsgs(cfg.msgs.head);
-		}
+			else if(strcmp(cmd,"msg") == 0){
+				printMsgs(cfg.msgs.head);
+			}
 
-		else if(strcmp(cmd,"topic") == 0){
-			char* topic = strtok(command,DELIM);
-			Node* curr = cfg.msgs.head;
-			while( curr != NULL ){
-				Message* currMessage = (Message*)curr->data;
-				if(strcmp(currMessage->topic,topic) == 0){
-					printf("Id : %d, Title : %s\n",currMessage->id,currMessage->title);	
+			else if(strcmp(cmd,"topic") == 0){
+				char* topic = strtok(command,DELIM);
+				Node* curr = cfg.msgs.head;
+				while( curr != NULL ){
+					Message* currMessage = (Message*)curr->data;
+					if(strcmp(currMessage->topic,topic) == 0){
+						printf("Id : %d, Title : %s\n",currMessage->id,currMessage->title);	
+					}
+					curr = curr->next;
 				}
-				curr = curr->next;
+			}
+
+			else if(strcmp(cmd,"del") == 0){//TODO
+				char* token = strtok(NULL,DELIM);
+			}
+
+			else if(strcmp(cmd,"kick") == 0){//TODO
+				char* username = strtok(NULL,DELIM);
+			}	
+
+			else if(strcmp(cmd,"shutdown") == 0){
+				shutdown(SIGINT);
+			}
+
+			else if(strcmp(cmd,"prune") == 0){ //TODO
+				
+			}
+
+			else if(strcmp(cmd,"help") == 0){
+				FILE* file = fopen("help.txt","r");
+				int const bufferSize = 2048;
+				char buffer[bufferSize];
+				int sdas = fread(buffer,sizeof(char),bufferSize,file);
+				printf("\n");
+				write(0,buffer,strlen(buffer));
+				printf("\n\n");
+			}
+
+			else if(strcmp(cmd,"verify") == 0){
+				char* token = strtok(NULL,DELIM);
+				while(token != NULL){
+					write(cfg.sendVerif,token,strlen(token));
+					write(cfg.sendVerif,"\n",1);
+					token = strtok(NULL,DELIM);
+				}
+				write(cfg.sendVerif,MSGEND,MSGEND_L);
+				char buffer[4];
+				read(cfg.recieveVerif,buffer,4);
+				int nBadWords = atoi(buffer);
+				printf("Number of bad words : %d\n",nBadWords);
+			}
+
+			else { // Done
+				printf("Write \"help\" to get command information\n");
 			}
 		}
-
-		else if(strcmp(cmd,"del") == 0){
-			char* token = strtok(NULL,DELIM);
-		}
-
-		else if(strcmp(cmd,"kick") == 0){
-			char* username = strtok(NULL,DELIM);
-		}	
-
-		else if(strcmp(cmd,"shutdown") == 0){
-			shutdown(SIGINT);
-		}
-
-		else if(strcmp(cmd,"prune") == 0){
-			
-		}
-
-		else if(strcmp(cmd,"help") == 0){
-			FILE* file = fopen("help.txt","r");
-			int const bufferSize = 2048;
-			char buffer[bufferSize];
-			int sdas = fread(buffer,sizeof(char),bufferSize,file);
-			printf("\n");
-			write(0,buffer,strlen(buffer));
-			printf("\n\n");
-		}
-
-		else if(strcmp(cmd,"verify") == 0){
-			char* token = strtok(NULL,DELIM);
-			while(token != NULL){
-				write(cfg.sendVerif,token,strlen(token));
-				write(cfg.sendVerif,"\n",1);
-				token = strtok(NULL,DELIM);
-			}
-			write(cfg.sendVerif,MSGEND,MSGEND_L);
-			char buffer[4];
-			read(cfg.recieveVerif,buffer,4);
-			int nBadWords = atoi(buffer);
-			printf("Number of bad words : %d\n",nBadWords);
-		}
-
-		else {
-			printf("Write \"help\" to get command information\n");
-		}
-
 	}
 	return 0;
 }
 
 
-
+// TODO
 void* clientMessageReciever(void* data){
 	
 	int result = mkfifo(LISTENER_PATH,0666);
@@ -214,9 +215,9 @@ void* clientMessageReciever(void* data){
 
 	
 	while(1){
-		int const bufferSize = 2048;
+		int const bufferSize = 8192;
 		char buff[bufferSize];
-		char* buffer = buff;
+		void* buffer = buff;
 
 		int bCount = read(fifo, buffer, bufferSize * sizeof(char));
 		fprintf(stderr,"[INFO]Recebeu bytes : %d\n",bCount);
@@ -224,8 +225,8 @@ void* clientMessageReciever(void* data){
 		buffer = buffer + sizeof(Command);
 
 
-		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d , User: %s\n",
-			command->cmd,command->structSize,command->clientPid,command->username);
+		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d\n",
+			command->cmd,command->structSize,command->clientPid);
 
 		switch (command->cmd)
 		{
@@ -237,11 +238,12 @@ void* clientMessageReciever(void* data){
 				strcpy(user->username,info->username);
 				printf("[INFO]Client fifo : %s, Username : %s\n",info->pathToFifo,user->username);
 
-				FILE* file = fopen(info->pathToFifo,"w");
-				if(file == NULL){
+				int fd = open(info->pathToFifo,O_RDWR);
+				if(fd == -1){
 					fprintf(stderr,"[ERROR]Error opening user fifo : Descarting User\n");
 				} else{
 					fprintf(stderr,"[INFO]Opened client fifo\n");
+					user->fifo = fd;
 					LinkedList_append(&cfg.users,user);
 				}
 				
@@ -260,6 +262,10 @@ void* clientMessageReciever(void* data){
 					}
 				}
 				if(allowed){
+					Message* realMessage = malloc(sizeof(Message));
+					memcpy(realMessage,message,sizeof(message));
+					realMessage->id = ++cfg.msgId;
+
 					LinkedList_append(&cfg.msgs,message);
 					Node* currTopic = cfg.topics.head;
 					//check if topic exists
@@ -319,6 +325,7 @@ void* clientMessageReciever(void* data){
 
 }
 
+// TODO
 void* checkAllClientsState(void* data){
 	//Every ten seconds check if users have TODO 
 	while(1){
@@ -326,7 +333,7 @@ void* checkAllClientsState(void* data){
 	}
 }
 
-//Done
+
 int verifyBadWords(Message* message){
 	write(cfg.sendVerif,message->title,strlen(message->title));
 	write(cfg.sendVerif,"\n",1);
@@ -374,27 +381,42 @@ void printUsers(Node* head){
 		curr = curr->next;
 	}
 }
-
+// TODO
 void printMsgs(Node* head){
 	Node* curr = head;
 	printf("Msgs on Memory : %d total\n", LinkedList_getSize(&cfg.msgs));
 	
 	while(curr != NULL){
 		//TODO
-		printf("\t%s ,  : \n",(char*)curr->data);
+		Message* currMessage = (Message*)curr->data;
+		printf("Title : %s,\n\tUsername : %s,\n\tTopic : %s\n",currMessage->title,currMessage->username,currMessage->topic);
 		curr = curr->next;
 	}
 }
 
+// TODO
 void shutdown(int signal){
 	printf("Exiting\n");
 	unlink(LISTENER_PATH);
 	Node* curr = cfg.users.head;
 	while(curr != NULL){
-		//TODO
+		User* currUser = (User*)curr->data;
+		sendToClient(currUser,SERVER_SHUTDOWN,NULL,0);
+		printf("Sent shutdown to : %s\n",currUser->username);
 		curr = curr->next;
 	}
 	exit(0);
+}
+
+void sendToClient(User* user,int cmd,void* other, size_t size){
+	Command command;
+	command.cmd = cmd;
+	command.clientPid = getpid();
+	command.structSize = size;
+
+	Buffer buffer = joinCommandStruct(&command,other,size);
+	int written = write(user->fifo,buffer.ptr,buffer.size);
+	free(buffer.ptr);
 }
 
 Node* getUserNode(pid_t pid){

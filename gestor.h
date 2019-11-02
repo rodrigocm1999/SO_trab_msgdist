@@ -31,6 +31,7 @@ int verifyBadWords(Message* message);
 Message* new_Message();
 
 void* clientMessageReciever(void* data);
+void sendToClient(User* user,int cmd,void* other, size_t size);
 void* heartBeat(void* data);
 
 void printTopics(Node* head);

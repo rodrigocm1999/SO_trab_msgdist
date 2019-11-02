@@ -42,7 +42,7 @@ typedef struct Message{
 typedef struct User{
 	pid_t pid;
 	char username[USERNAME_L];
-	FILE* fifo;
+	int fifo;
 	LinkedList topics;
 }User;
 
@@ -55,7 +55,6 @@ typedef struct NewClientInfo{
 typedef struct Command{
 	int cmd;
 	pid_t clientPid;
-	char username[USERNAME_L];
 	size_t structSize;
 }Command;
 
