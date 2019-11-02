@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include "utils.h"
 
-#define LISTENERPATH "/tmp/msgdist_listenerFifo"
+#define LISTENER_PATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32
 #define TOPIC_L 20
 #define TITLE_L 100
@@ -22,6 +22,9 @@
 #define USER_LEAVING 11
 #define NEW_MESSAGE 20
 #define GET_TOPICS 30
+#define DELETED_TOPIC 31
+#define SUBSCRIBE_TOPIC 35
+#define UNSUBSCRIBE_TOPIC 36
 #define HEARTBEAT_CHECK 40
 #define HEARTBEAT_OK 41
 

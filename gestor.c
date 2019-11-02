@@ -18,7 +18,7 @@ int main(int argc,char* argv[]){
 				printf("[INFO] Using force start option\n");
 				if(isServerRunning()){
 					printf("[INFO] Deleting old listener FIFO\n");
-					unlink(LISTENERPATH);
+					unlink(LISTENER_PATH);
 				}
 				checkServerRunning = 0;
 				break;
@@ -30,7 +30,7 @@ int main(int argc,char* argv[]){
 
 		}
 		//check for already running server
-		if(checkServerRunning && !isServerRunning()){
+		if(checkServerRunning && isServerRunning()){
 			printf("Program already running\nExiting\n");
 			exit(0);
 		}
@@ -91,12 +91,10 @@ int main(int argc,char* argv[]){
 	pthread_create(&listenerThread,NULL,clientMessageReciever,(void*)NULL);
 
 
-	// Create lists for memory objects
-	cfg.msgs;
-	cfg.topics;
-	cfg.users;
+	// Ready config variables
+	cfg.msgId = 0;
 	cfg.filter = 1;
-
+	// Change Default Signal Effect
 	signal(SIGINT, shutdown);
 
 	printf("Write \"help\" to get command information\n");
@@ -151,11 +149,11 @@ int main(int argc,char* argv[]){
 		}
 
 		else if(strcmp(cmd,"del") == 0){
-			char* token = strtok(command,DELIM);
+			char* token = strtok(NULL,DELIM);
 		}
 
 		else if(strcmp(cmd,"kick") == 0){
-			char* username = strtok(command,DELIM);
+			char* username = strtok(NULL,DELIM);
 		}	
 
 		else if(strcmp(cmd,"shutdown") == 0){
@@ -176,6 +174,20 @@ int main(int argc,char* argv[]){
 			printf("\n\n");
 		}
 
+		else if(strcmp(cmd,"verify") == 0){
+			char* token = strtok(NULL,DELIM);
+			while(token != NULL){
+				write(cfg.sendVerif,token,strlen(token));
+				write(cfg.sendVerif,"\n",1);
+				token = strtok(NULL,DELIM);
+			}
+			write(cfg.sendVerif,MSGEND,MSGEND_L);
+			char buffer[4];
+			read(cfg.recieveVerif,buffer,4);
+			int nBadWords = atoi(buffer);
+			printf("Number of bad words : %d\n",nBadWords);
+		}
+
 		else {
 			printf("Write \"help\" to get command information\n");
 		}
@@ -188,12 +200,12 @@ int main(int argc,char* argv[]){
 
 void* clientMessageReciever(void* data){
 	
-	int result = mkfifo(LISTENERPATH,0666);
+	int result = mkfifo(LISTENER_PATH,0666);
 	if(result != 0) {
 		fprintf(stderr,"[ERROR]Creating listener fifo : already exists\n");
 		exit(0);
 	}
-	int fifo = open(LISTENERPATH,O_RDWR);
+	int fifo = open(LISTENER_PATH,O_RDWR);
 	if(fifo == -1 ){
 		printf("[ERROR]Main client listener creation error (FIFO)\n");
 		fprintf(stderr,"[ERROR]Main client listener creation error (FIFO)\n");
@@ -218,7 +230,7 @@ void* clientMessageReciever(void* data){
 		switch (command->cmd)
 		{
 
-			case NEW_USER:{
+			case NEW_USER:{ // TODO check if another user with same name exists
 				NewClientInfo* info = (NewClientInfo*)buffer;
 				User* user = malloc(sizeof(User));
 				user->pid = info->pid;
@@ -276,6 +288,23 @@ void* clientMessageReciever(void* data){
 			case USER_LEAVING:{
 				//TODO
 				printf("Not Yet Implemented");
+
+				break;
+			}
+
+
+			case SUBSCRIBE_TOPIC:{
+				User* user = getUser(command->clientPid);
+				char* topic = buffer;
+				Node* topicNode = getTopicNode(topic);
+				
+				if(topicNode != NULL){ // if topic exists
+					Node* userTopic = getUserTopicNode(user,topic);
+					if(userTopic == NULL){
+						LinkedList_append(&user->topics,topicNode->data);
+					}
+				}
+				//TODO warn user of what happened
 
 				break;
 			}
@@ -359,11 +388,51 @@ void printMsgs(Node* head){
 
 void shutdown(int signal){
 	printf("Exiting\n");
-	unlink(LISTENERPATH);
+	unlink(LISTENER_PATH);
 	Node* curr = cfg.users.head;
 	while(curr != NULL){
 		//TODO
 		curr = curr->next;
 	}
 	exit(0);
+}
+
+Node* getUserNode(pid_t pid){
+	Node* curr = cfg.users.head;
+	while(curr != NULL) {
+		User* currUser = (User*)curr->data;
+		if(currUser->pid == pid){
+			return curr;
+		}
+		curr = curr->next;
+	}
+	return NULL;
+}
+
+User* getUser(pid_t pid){
+	return (User*) getUserNode(pid)->data;
+}
+
+Node* getTopicNode(char* topic){
+	Node* curr = cfg.topics.head;
+	while(curr != NULL) {
+		char* currTopic = (char*) curr->data;
+		if(strcmp(currTopic,topic) == 0){
+			return curr;
+		}
+		curr = curr->next;
+	}
+	return NULL;
+}
+
+Node* getUserTopicNode(User* user,char* topic){
+	Node* curr = user->topics.head;
+	while(curr != NULL) {
+		char* currTopic = (char*)curr->data;
+		if(strcmp(currTopic,topic) == 0){
+			return curr;
+		}
+		curr = curr->next;
+	}
+	return NULL;
 }

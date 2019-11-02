@@ -24,6 +24,15 @@ void LinkedList_append(LinkedList* list,void* newObj){
 	last->next  = newNode;
 	newNode->previous = last;
 }
+void LinkedList_appendNode(LinkedList* list,Node* newNode){
+	if(list->head == NULL){
+		list->head = newNode;
+		return;
+	}
+	Node* last = Node_getLast(list->head);
+	last->next  = newNode;
+	newNode->previous = last;
+}
 
 void LinkedList_prepend(LinkedList* list,void* newObj){
 	Node* newNode = new_Node(newObj);

@@ -1,7 +1,7 @@
 #include "comum.h"
 
 int isServerRunning(){
-    int f = open(LISTENERPATH,O_RDWR);
+    int f = open(LISTENER_PATH,O_RDWR);
     if(f == -1){
         return 0;
     }

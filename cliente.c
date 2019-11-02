@@ -32,7 +32,7 @@ int main(int argc,char* argv[]){
 	}
 
 	// printf("ola");
-	cfg.server = open(LISTENERPATH,O_WRONLY);
+	cfg.server = open(LISTENER_PATH,O_RDWR);
 	{
 		NewClientInfo newClient;
 		strcpy(newClient.username,cfg.username);
@@ -41,9 +41,9 @@ int main(int argc,char* argv[]){
 
 		sendToServer(NEW_USER,&newClient,sizeof(NewClientInfo));
 	}
-	pause();
+	//pause();
 	// Criar thread para receber info do servidor
-	pthread_t listenerThread; 
+	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
 
 	int choice;
@@ -143,11 +143,6 @@ void shutdown(int signal){
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
 	exit(0);
-}
-
-
-void ListTopics(){
-	
 }
 
 int sendToServer(int cmd,void* other,size_t size){

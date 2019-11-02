@@ -13,6 +13,7 @@ typedef struct LinkedList{
 
 Node* LinkedList_getNode(LinkedList* list,void* obj);
 void LinkedList_append(LinkedList* list,void* newObj);
+void LinkedList_appendNode(LinkedList* list,Node* node);
 void LinkedList_prepend(LinkedList* list,void* newObj);
 Node* LinkedList_pop(LinkedList* list,void* obj);
 int LinkedList_getSize(LinkedList* list);
