@@ -85,18 +85,22 @@ int main(int argc,char* argv[]){
 			char topic[20], titulo[100];
 			char msg[1000];
 
-
+			echo();
 			mvprintw(6, 27,"Topico da menssagem: ");
-			scanf("%s",message.topic);
+			refresh();
+			scanw("%s",message.topic);
+			
 
 
 			mvprintw(8, 27,"Titulo da menssagem: ");
-			scanf("%s",message.title);
+			refresh();
+			scanw("%s",message.title);
 
-				//Message newMsg(username,topic,titulo,msg);
+			//Message newMsg(username,topic,titulo,msg);
 
 			mvprintw(10,27,"Mensagem: ");
-			scanf("%s",message.body);
+			refresh();
+			scanw("%s",message.body);
 
 			sendToServer(NEW_MESSAGE,&message,sizeof(Message));
 			mvprintw(12,27,"Mensagem enviada\n");
