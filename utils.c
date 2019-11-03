@@ -15,8 +15,21 @@ Node* LinkedList_getNode(LinkedList* list,void* obj){
 }
 
 void LinkedList_append(LinkedList* list,void* newObj){
+	if(list->head == NULL){
+		list->head = new_Node(newObj);
+		return;
+	}
 	Node* last = Node_getLast(list->head);
 	Node* newNode = new_Node(newObj);
+	last->next  = newNode;
+	newNode->previous = last;
+}
+void LinkedList_appendNode(LinkedList* list,Node* newNode){
+	if(list->head == NULL){
+		list->head = newNode;
+		return;
+	}
+	Node* last = Node_getLast(list->head);
 	last->next  = newNode;
 	newNode->previous = last;
 }
@@ -41,9 +54,9 @@ Node* LinkedList_pop(LinkedList* list,void* obj){
 }
 
 int LinkedList_getSize(LinkedList* list){
-	int size = 1;
+	int size = 0;
 	Node* curr = list->head;
-	while(curr->next != NULL){
+	while(curr != NULL){
 		++size;
 		curr = curr->next;
 	}
