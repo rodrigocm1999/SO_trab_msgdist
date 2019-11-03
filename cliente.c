@@ -1,18 +1,11 @@
 #include "cliente.h"
 
+
 ClientConfig cfg;
 
 int main(int argc,char* argv[]){
 
-<<<<<<< HEAD
-	initscr();
-	raw();
-	attron(A_STANDOUT | A_UNDERLINE);
-	mvprintw(12,49,"Server not running\nExiting\n");
-	attroff(A_STANDOUT | A_UNDERLINE);
 
-=======
->>>>>>> e58da1241db3bd5456601f710f18b9724cdc0efc
 	if(!isServerRunning()){
 		printf("Server not running\nExiting\n");
 		exit(0);
@@ -55,12 +48,104 @@ int main(int argc,char* argv[]){
 	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
 
-	int choice;
-	while(1){
-		
-		printf("\n1 - Write Message\n2 - List Topics\n3 - List Titles in Topic\n4 - Read Message in Topic\n5 - Subscribe to Topic\n6 - Unsubscribe from Topic\n0 - Exit\n");
-		scanf("%d",&choice);
+	int menu_ret = 1, menu_ret2 = 1;
+    char alts[][100] = {{" Write Message"},                 /* Every menu needs an */
+                         {"Info needed"},
+                         {"Subscribe to Topic"}, 
+                         {"Unsubscribe from Topic"},        /* array like these to */
+                         {"Exit"},};                  /* hold the entries.   */
+    char alts2[][100] = {{"List Topics"},
+                         {"List Titles in Topic"},
+                         {"Read Message in Topic"},
+                         {"Return"},};
 
+    setlocale (LC_CTYPE, "");
+
+    initscr();                  /* Most of the below initialisers are */
+    noecho();                   /* not necessary for this example.    */
+    keypad (stdscr, TRUE);      /* It's just a template for a         */
+    meta (stdscr, TRUE);        /* hypothetical program that might    */
+    nodelay (stdscr, FALSE);    /* need them.                         */
+    notimeout (stdscr, TRUE);
+    raw();
+    curs_set (0);
+
+	int choice;
+
+	while(menu_ret != 5){
+		
+		menu_ret = print_menu (2, 5, 5, 15,
+                               cfg.username, alts, menu_ret);
+
+		if (menu_ret == 1)  /* This is just an example program. */
+        {                   /* You can't start an actual game.  */
+
+			Message message;
+			strcpy(message.username,cfg.username);
+			char topic[20], titulo[100];
+			char msg[1000];
+
+
+			mvprintw(6, 27,"Topico da menssagem: ");
+			scanf("%s",message.topic);
+
+
+			mvprintw(8, 27,"Titulo da menssagem: ");
+			scanf("%s",message.title);
+
+				//Message newMsg(username,topic,titulo,msg);
+
+			mvprintw(10,27,"Mensagem: ");
+			scanf("%s",message.body);
+
+			sendToServer(NEW_MESSAGE,&message,sizeof(Message));
+			mvprintw(12,27,"Mensagem enviada\n");
+            getch();
+        }
+		if (menu_ret == 2) /* If you select load game, a new    */
+        {                       /* menu will show up without erasing */
+            do                  /* the main menu. */
+            {
+                menu_ret2 = print_menu (6, 34, 4, 15,
+                                        "SELECT SLOT", alts2, 1);
+
+
+				if (menu_ret2 == 1 ){
+
+					// List Topics
+
+				}
+				if (menu_ret2 == 2 ){
+					
+					// List Titles in Topic
+
+				}
+				if (menu_ret2 == 3 ){
+					
+					// Read Message in Topic
+
+				}
+            }
+            while (menu_ret2 != 4);
+        }
+		if(menu_ret == 3){
+
+			mvprintw (5, 23, "Lol jk! This is a demo program.");
+            mvprintw (6, 26, "Press any key to return.");
+            getch();
+		}
+		if(menu_ret == 4){
+
+			//Unsubscribe to Topic
+		}
+
+		if(menu_ret == 5){
+			mvprintw(6, 34,"Exiting");
+			shutdown(SIGINT);
+		}
+
+		erase(); 
+		/*
 		switch (choice)
 		{
 		case 0:{ // Exit
@@ -70,7 +155,7 @@ int main(int argc,char* argv[]){
 		}
 		case 1:{
 
-			printf("Ola\n");
+			
 			Message message;
 			strcpy(message.username,cfg.username);
 			char topic[20], titulo[100];
@@ -84,10 +169,7 @@ int main(int argc,char* argv[]){
 			printf("Titulo da menssagem: ");
 			scanf("%s",message.title);
 
-<<<<<<< HEAD
 				//Message newMsg(username,topic,titulo,msg);
-=======
->>>>>>> e58da1241db3bd5456601f710f18b9724cdc0efc
 
 			printf("Mensagem: ");
 			scanf("%s",message.body);
@@ -116,7 +198,7 @@ int main(int argc,char* argv[]){
 			printf("Invalid Option\n");
 			break;
 		}
-		
+		*/
 
 	}
 
@@ -127,7 +209,6 @@ int main(int argc,char* argv[]){
 	WINDOW * win = newwin(nLines, nCols, y0, x0);
 	wrefresh(win);
 	while(1){pause();}*/
-	getch();
 	endwin();
 	return 0;
 }
