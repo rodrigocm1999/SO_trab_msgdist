@@ -3,6 +3,13 @@
 ClientConfig cfg;
 
 int main(int argc,char* argv[]){
+
+	initscr();
+	raw();
+	attron(A_STANDOUT | A_UNDERLINE);
+	mvprintw(12,49,"Server not running\nExiting\n");
+	attroff(A_STANDOUT | A_UNDERLINE);
+
 	if(!isServerRunning()){
 		printf("Server not running\nExiting\n");
 		exit(0);
@@ -75,7 +82,7 @@ int main(int argc,char* argv[]){
 				printf("Mensagem: ");
 				scanf("%s",msg);
 
-				Message newMsg(username,topic,titulo,msg);
+				//Message newMsg(username,topic,titulo,msg);
 
 
 				printf("Mensagem enviada");
@@ -112,6 +119,8 @@ int main(int argc,char* argv[]){
 	WINDOW * win = newwin(nLines, nCols, y0, x0);
 	wrefresh(win);
 	while(1){pause();}*/
+	getch();
+	endwin();
 	return 0;
 }
 
