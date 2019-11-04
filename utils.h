@@ -16,6 +16,7 @@ void LinkedList_append(LinkedList* list,void* newObj);
 void LinkedList_appendNode(LinkedList* list,Node* node);
 void LinkedList_prepend(LinkedList* list,void* newObj);
 Node* LinkedList_pop(LinkedList* list,void* obj);
+void LinkedList_detachNode(LinkedList* list,Node* node);
 int LinkedList_getSize(LinkedList* list);
 void LinkedList_prune(LinkedList* list);
 

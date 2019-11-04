@@ -10,6 +10,9 @@
 #include <pthread.h>
 #include "utils.h"
 
+#define TRUE 1
+#define FALSE 0
+
 #define LISTENER_PATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32
 #define TOPIC_L 20
@@ -21,12 +24,13 @@
 #define NEW_USER 10
 #define USER_LEAVING 11
 #define NEW_MESSAGE 20
+#define BAD_MESSAGE 21
 #define GET_TOPICS 30
 #define DELETED_TOPIC 31
 #define SUBSCRIBE_TOPIC 35
 #define UNSUBSCRIBE_TOPIC 36
 #define HEARTBEAT_CHECK 40
-#define HEARTBEAT_OK 41
+#define HEARTBEAT_ISALIVE 41
 
 
 
@@ -41,6 +45,7 @@ typedef struct Message{
 
 typedef struct User{
 	pid_t pid;
+	int beat; //bool
 	char username[USERNAME_L];
 	int fifo;
 	LinkedList topics;
@@ -57,10 +62,6 @@ typedef struct Command{
 	pid_t clientPid;
 	size_t structSize;
 }Command;
-
-typedef struct Pointer{
-	void* ptr;
-}Pointer;
 
 typedef struct Buffer{
 	void* ptr;

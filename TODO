@@ -1,3 +1,7 @@
 testar enviroment word not
 
 start up gestor dá problemas e shutdown nao apaga fifo
+
+correct username if dupped
+
+fix client sarting with server not running but fifo still exists

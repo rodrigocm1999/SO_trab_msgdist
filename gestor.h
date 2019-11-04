@@ -30,6 +30,8 @@ typedef struct ServerConfig{
 int verifyBadWords(Message* message);
 Message* new_Message();
 
+
+void* checkAllClientsState(void* data);
 void* clientMessageReciever(void* data);
 void sendToClient(User* user,int cmd,void* other, size_t size);
 void* heartBeat(void* data);

@@ -18,8 +18,10 @@ Buffer joinCommandStruct(Command* command,void* other, size_t otherSize){
     void * dest = buffer.ptr;
     
     memcpy(dest,command,sizeof(Command));
-    dest = dest + sizeof(Command);
-    memcpy(dest,other,otherSize);
+    if(other != NULL && otherSize != 0){
+        dest = dest + sizeof(Command);
+        memcpy(dest,other,otherSize);
+    }
     return buffer;
 }
 

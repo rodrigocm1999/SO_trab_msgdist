@@ -89,6 +89,8 @@ int main(int argc,char* argv[]){
 	// Start listener for messages
 	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,clientMessageReciever,(void*)NULL);
+	pthread_t checkClientsThread;
+	pthread_create(&listenerThread,NULL,checkAllClientsState,(void*)NULL);
 
 
 	// Ready config variables
@@ -228,13 +230,14 @@ void* clientMessageReciever(void* data){
 		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d\n",
 			command->cmd,command->structSize,command->clientPid);
 
-		switch (command->cmd)
-		{
+		switch (command->cmd){
+
 
 			case NEW_USER:{ // TODO check if another user with same name exists
 				NewClientInfo* info = (NewClientInfo*)buffer;
 				User* user = malloc(sizeof(User));
 				user->pid = info->pid;
+				user->beat = TRUE;
 				strcpy(user->username,info->username);
 				printf("[INFO]Client fifo : %s, Username : %s\n",info->pathToFifo,user->username);
 
@@ -259,6 +262,7 @@ void* clientMessageReciever(void* data){
 					if(badWordsCount > cfg.maxbadWords){
 						allowed = 0;
 						fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
+						sendToClient(getUser(command->clientPid),BAD_MESSAGE,NULL,0);
 					}
 				}
 				if(allowed){
@@ -316,6 +320,13 @@ void* clientMessageReciever(void* data){
 			}
 
 
+			case HEARTBEAT_ISALIVE:{
+				User* user = getUser(command->clientPid);
+				user->beat = TRUE;				
+				break;
+			}
+
+
 			default:{
 				printf("Not Recognized Command\n");
 				break;
@@ -330,6 +341,30 @@ void* checkAllClientsState(void* data){
 	//Every ten seconds check if users have TODO 
 	while(1){
 		sleep(10);
+		Node* curr = cfg.users.head;
+		while(curr != NULL){
+			User* user = (User*) curr->data;
+			if(user->beat == FALSE){
+				printf("User disconnected : %s\n",user->username);
+				LinkedList_detachNode(&cfg.users,curr);
+				// Limpar tudo acerca do utilizador
+				{
+					// 1º limpar Nodes dos topicos a que pertence
+					Node* currNode = user->topics.head;
+					while(currNode != NULL){
+						Node* nextnode = currNode->next;
+						free(currNode);
+						currNode = nextnode;
+					}
+					// 2º limpar o user
+					free(user);
+					// 3º limpar o node do user 
+					free(curr);
+				}
+			}
+			user->beat = FALSE;
+			curr = curr->next;
+		}
 	}
 }
 
@@ -394,7 +429,6 @@ void printMsgs(Node* head){
 	}
 }
 
-// TODO
 void shutdown(int signal){
 	printf("Exiting\n");
 	unlink(LISTENER_PATH);

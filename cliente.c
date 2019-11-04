@@ -12,6 +12,7 @@ int main(int argc,char* argv[]){
 	}
 	
 	signal(SIGINT,shutdown);
+	signal(SIGPIPE,shutdown);
 	printf("%d\n",getpid());
 	printf("Username: \n");
 	scanf("%s",cfg.username);
@@ -34,7 +35,7 @@ int main(int argc,char* argv[]){
 	}
 
 	// printf("ola");
-	cfg.server = open(LISTENER_PATH,O_RDWR);
+	cfg.server = open(LISTENER_PATH,O_WRONLY);
 	{
 		NewClientInfo newClient;
 		strcpy(newClient.username,cfg.username);
@@ -47,6 +48,8 @@ int main(int argc,char* argv[]){
 	// Criar thread para receber info do servidor
 	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
+	pthread_t heartbetThread;
+	pthread_create(&listenerThread,NULL,heartbeat,(void*)NULL);
 
 	int menu_ret = 1, menu_ret2 = 1;
     char alts[][100] = {{" Write Message"},                 /* Every menu needs an */
@@ -239,6 +242,9 @@ void* fifoListener(void* data){
 }
 
 void shutdown(int signal){
+	if(signal == SIGPIPE){
+		printf("Server Down\n");
+	}
 	printf("Shuting Down\n");
 	sendToServer(USER_LEAVING,NULL,0);
 
@@ -246,6 +252,15 @@ void shutdown(int signal){
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
 	exit(0);
+}
+
+void* heartbeat(void* data){
+	while(1){
+		sleep(9);
+
+		sendToServer(HEARTBEAT_ISALIVE,NULL,0);
+		printf("Sent Alive\n");
+	}
 }
 
 int sendToServer(int cmd,void* other,size_t size){

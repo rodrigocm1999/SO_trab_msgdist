@@ -15,4 +15,5 @@ typedef struct{
 
 void* fifoListener(void* data);
 void shutdown();
+void* heartbeat(void* data);
 int sendToServer(int cmd,void* other,size_t size);

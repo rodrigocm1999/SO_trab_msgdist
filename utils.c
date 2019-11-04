@@ -53,6 +53,14 @@ Node* LinkedList_pop(LinkedList* list,void* obj){
 	return node;
 }
 
+void LinkedList_detachNode(LinkedList* list,Node* node){
+	if(node == list->head){
+		list->head = node->next;
+		return;
+	}
+	Node_detach(node);
+}
+
 int LinkedList_getSize(LinkedList* list){
 	int size = 0;
 	Node* curr = list->head;
