@@ -41,8 +41,11 @@ void printUsers(Node* head);
 void printMsgs(Node* head);
 
 void shutdown(int signal);
+void userLeft(Node* node);
 
 Node* getUserNode(pid_t pid);
 User* getUser(pid_t pid);
+Node* getUserNodeByUsername(char* username);
+User* getUserByUsername(char* username);
 Node* getTopicNode(char* topic);
 Node* getUserTopicNode(User* user,char* topic);

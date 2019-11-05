@@ -139,6 +139,7 @@ void List_add(List* list,void* newElem){
 	if(list->size == list->capacity){
 		List_expand(list);
 	}
+	list->arr[list->size] = newElem;
 }
 void List_expand(List* list){
 	int newCapacity = list->capacity * ARRAYEXPANDMULTIPLIER;

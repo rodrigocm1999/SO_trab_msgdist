@@ -34,7 +34,7 @@ int main(int argc,char* argv[]){
 		exit(0);
 	}
 
-	// printf("ola");
+
 	cfg.server = open(LISTENER_PATH,O_WRONLY);
 	{
 		NewClientInfo newClient;
@@ -43,6 +43,22 @@ int main(int argc,char* argv[]){
 		strcpy(newClient.pathToFifo,cfg.fifoPath);
 
 		sendToServer(NEW_USER,&newClient,sizeof(NewClientInfo));
+
+
+		char buff[1024];
+		void* buffer = buff;
+
+		int bCount = read(cfg.fifo, buffer, 1024);
+		Command* command = (Command*)buffer;
+		buffer = buffer + sizeof(Command);
+
+		if(command->cmd == USERNAME_REPEATED){
+			char* newUsername = (char*)buffer;
+			strcpy(cfg.username,newUsername);
+			printf("Username was repeated, changed to : %s\n", newUsername);
+			sleep(1);
+		}
+		
 	}
 	//pause();
 	// Criar thread para receber info do servidor
@@ -233,7 +249,7 @@ void* fifoListener(void* data){
 		buffer = buffer + sizeof(Command);
 
 		if(command->cmd == SERVER_SHUTDOWN){
-			printf("Server ");
+			printf("Server "); // Intented to not change line
 			shutdown(SIGINT);
 		}
 		
@@ -251,22 +267,21 @@ void shutdown(int signal){
 	close(cfg.server);
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
+	execlp("reset","reset",NULL); // resets terminal
 	exit(0);
 }
 
 void* heartbeat(void* data){
 	while(1){
 		sleep(9);
-
 		sendToServer(HEARTBEAT_ISALIVE,NULL,0);
-		printf("Sent Alive\n");
 	}
 }
 
 int sendToServer(int cmd,void* other,size_t size){
 	Command command;
 	command.cmd = cmd;
-	command.clientPid = getpid();
+	command.senderPid = getpid();
 	command.structSize = size;
 	
 	Buffer buffer = joinCommandStruct(&command,other,size);

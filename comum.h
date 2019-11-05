@@ -23,6 +23,8 @@
 #define SERVER_SHUTDOWN -10
 #define NEW_USER 10
 #define USER_LEAVING 11
+#define USERNAME_REPEATED 12
+#define USERNAME_OK 13
 #define NEW_MESSAGE 20
 #define BAD_MESSAGE 21
 #define GET_TOPICS 30
@@ -59,7 +61,7 @@ typedef struct NewClientInfo{
 
 typedef struct Command{
 	int cmd;
-	pid_t clientPid;
+	pid_t senderPid;
 	size_t structSize;
 }Command;
 

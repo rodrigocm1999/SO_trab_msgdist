@@ -222,32 +222,53 @@ void* clientMessageReciever(void* data){
 		void* buffer = buff;
 
 		int bCount = read(fifo, buffer, bufferSize * sizeof(char));
-		fprintf(stderr,"[INFO]Recebeu bytes : %d\n",bCount);
 		Command* command = (Command*)buffer;
 		buffer = buffer + sizeof(Command);
-
-
-		fprintf(stderr,"[INFO]Recebeu commando : %d \n\tsize : %zu , clientPid : %d\n",
-			command->cmd,command->structSize,command->clientPid);
+		//fprintf(stderr,"[INFO]Recebeu commando : %d , size : %zu , clientPid : %d\n", command->cmd,command->structSize,command->clientPid);
 
 		switch (command->cmd){
 
 
-			case NEW_USER:{ // TODO check if another user with same name exists
+			case NEW_USER:{ // TODO check if another user with same name exists and send to client new name
 				NewClientInfo* info = (NewClientInfo*)buffer;
-				User* user = malloc(sizeof(User));
-				user->pid = info->pid;
-				user->beat = TRUE;
-				strcpy(user->username,info->username);
-				printf("[INFO]Client fifo : %s, Username : %s\n",info->pathToFifo,user->username);
+				User* newUser = malloc(sizeof(User));
+				newUser->pid = info->pid;
+				newUser->beat = TRUE;
+				strcpy(newUser->username,info->username);
+
+				int wasRepeated = FALSE;
+
+				while(getUserNodeByUsername(newUser->username) != NULL){
+					wasRepeated = TRUE;
+					printf("Dupped name\n");
+
+					// add number to username if dupped
+					char* underline = &newUser->username[strlen(newUser->username)];
+					int currentNumber = atoi(underline + 1);
+
+					if(strncmp(underline,"_",1) == 0){ //if it has an underline
+						sprintf(underline,"_%d",currentNumber + 1);
+						printf("New number : %d\n",currentNumber + 1);
+					}else{
+						sprintf(underline,"_1");
+					}
+				}
+
+				printf("[INFO]New Client; pid : %d , fifo : %s, Username : %s\n",command->senderPid,info->pathToFifo,newUser->username);
 
 				int fd = open(info->pathToFifo,O_RDWR);
 				if(fd == -1){
 					fprintf(stderr,"[ERROR]Error opening user fifo : Descarting User\n");
 				} else{
 					fprintf(stderr,"[INFO]Opened client fifo\n");
-					user->fifo = fd;
-					LinkedList_append(&cfg.users,user);
+					newUser->fifo = fd;
+					LinkedList_append(&cfg.users,newUser);
+
+					if(wasRepeated){
+						sendToClient(newUser,USERNAME_REPEATED,newUser->username,USERNAME_L);
+					}else{
+						sendToClient(newUser,USERNAME_OK,NULL,0);
+					}
 				}
 				
 				break;
@@ -262,7 +283,7 @@ void* clientMessageReciever(void* data){
 					if(badWordsCount > cfg.maxbadWords){
 						allowed = 0;
 						fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
-						sendToClient(getUser(command->clientPid),BAD_MESSAGE,NULL,0);
+						sendToClient(getUser(command->senderPid),BAD_MESSAGE,NULL,0);
 					}
 				}
 				if(allowed){
@@ -296,15 +317,13 @@ void* clientMessageReciever(void* data){
 
 
 			case USER_LEAVING:{
-				//TODO
-				printf("Not Yet Implemented");
-
+				userLeft(getUserNode(command->senderPid));
 				break;
 			}
 
 
 			case SUBSCRIBE_TOPIC:{
-				User* user = getUser(command->clientPid);
+				User* user = getUser(command->senderPid);
 				char* topic = buffer;
 				Node* topicNode = getTopicNode(topic);
 				
@@ -313,6 +332,9 @@ void* clientMessageReciever(void* data){
 					if(userTopic == NULL){
 						LinkedList_append(&user->topics,topicNode->data);
 					}
+					//sendToClient(user,SUBSCRIBED_TO_TOPIC,NULL,0);
+				}else{
+				 //	sendToClient(user,TOPIC_DOESNT_EXIST,NULL,0);
 				}
 				//TODO warn user of what happened
 
@@ -321,8 +343,8 @@ void* clientMessageReciever(void* data){
 
 
 			case HEARTBEAT_ISALIVE:{
-				User* user = getUser(command->clientPid);
-				user->beat = TRUE;				
+				User* user = getUser(command->senderPid);
+				user->beat = TRUE;		
 				break;
 			}
 
@@ -331,9 +353,9 @@ void* clientMessageReciever(void* data){
 				printf("Not Recognized Command\n");
 				break;
 			}
+
 		}
 	}
-
 }
 
 // TODO
@@ -346,28 +368,29 @@ void* checkAllClientsState(void* data){
 			User* user = (User*) curr->data;
 			if(user->beat == FALSE){
 				printf("User disconnected : %s\n",user->username);
-				LinkedList_detachNode(&cfg.users,curr);
-				// Limpar tudo acerca do utilizador
-				{
-					// 1º limpar Nodes dos topicos a que pertence
-					Node* currNode = user->topics.head;
-					while(currNode != NULL){
-						Node* nextnode = currNode->next;
-						free(currNode);
-						currNode = nextnode;
-					}
-					// 2º limpar o user
-					free(user);
-					// 3º limpar o node do user 
-					free(curr);
-				}
+				userLeft(curr);
 			}
 			user->beat = FALSE;
 			curr = curr->next;
 		}
 	}
 }
-
+void userLeft(Node* node){
+	LinkedList_detachNode(&cfg.users,node);
+	// Limpar tudo acerca do utilizador
+	User* user = (User*) node->data;
+	// 1º limpar Nodes dos topicos a que pertence
+	Node* currNode = user->topics.head;
+	while(currNode != NULL){
+		Node* nextnode = currNode->next;
+		free(currNode);
+		currNode = nextnode;
+	}
+	// 2º limpar o user
+	free(user);
+	// 3º limpar o node do user 
+	free(node);
+}
 
 int verifyBadWords(Message* message){
 	write(cfg.sendVerif,message->title,strlen(message->title));
@@ -445,7 +468,7 @@ void shutdown(int signal){
 void sendToClient(User* user,int cmd,void* other, size_t size){
 	Command command;
 	command.cmd = cmd;
-	command.clientPid = getpid();
+	command.senderPid = getpid();
 	command.structSize = size;
 
 	Buffer buffer = joinCommandStruct(&command,other,size);
@@ -467,6 +490,22 @@ Node* getUserNode(pid_t pid){
 
 User* getUser(pid_t pid){
 	return (User*) getUserNode(pid)->data;
+}
+
+Node* getUserNodeByUsername(char* username){
+	Node* curr = cfg.users.head;
+	while(curr != NULL) {
+		User* currUser = (User*)curr->data;
+		if(strcmp(currUser->username,username) == 0){
+			return curr;
+		}
+		curr = curr->next;
+	}
+	return NULL;
+}
+
+User* getUserByUsername(char* username){
+	return (User*) getUserNodeByUsername(username)->data;
 }
 
 Node* getTopicNode(char* topic){
