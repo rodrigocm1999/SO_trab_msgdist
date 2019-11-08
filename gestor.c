@@ -153,6 +153,29 @@ int main(int argc,char* argv[]){
 
 			else if(strcmp(cmd,"del") == 0){//TODO
 				char* token = strtok(NULL,DELIM);
+				int id = atoi(token);
+				if(id == 0){
+					printf("Invalid Identifier\n");
+				}
+				else{
+					int found = FALSE;
+					Node* curr = cfg.msgs.head;
+					while(curr != NULL){
+						Message* message = (Message*)curr->data;
+						if(message->id == id){
+							LinkedList_detachNode(&cfg.msgs,curr);
+							free(message);
+							free(curr);
+							printf("Message Deleted id = \"%d\"\n",id);
+							found = TRUE;
+							break;
+						}
+						curr = curr->next;
+					}
+					if(found == FALSE){
+						printf("Message with id = \"%d\" not found\n",id);
+					}
+				}
 			}
 
 			else if(strcmp(cmd,"kick") == 0){//TODO
@@ -284,21 +307,22 @@ void* clientMessageReciever(void* data){
 						allowed = 0;
 						fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
 						sendToClient(getUser(command->senderPid),BAD_MESSAGE,NULL,0);
+						break;
 					}
 				}
 				if(allowed){
 					Message* realMessage = malloc(sizeof(Message));
-					memcpy(realMessage,message,sizeof(message));
+					memcpy(realMessage,message,sizeof(Message));
 					realMessage->id = ++cfg.msgId;
 
-					LinkedList_append(&cfg.msgs,message);
+					LinkedList_append(&cfg.msgs,realMessage);
 					Node* currTopic = cfg.topics.head;
 					//check if topic exists
 					int found = 0;
 					while (currTopic != NULL){
 						if(currTopic->data != NULL){
 							char* topic = (char*)currTopic->data;
-							if(strcmp(topic,message->topic)==0){
+							if(strcmp(topic,realMessage->topic)==0){
 								found = 1;
 								break;
 							}
@@ -308,7 +332,7 @@ void* clientMessageReciever(void* data){
 					//add new topic if doesn't exist
 					if(found == 0){
 						char* topic = malloc(TOPIC_L);
-						strcpy(topic,message->topic);
+						strcpy(topic,realMessage->topic);
 						LinkedList_append(&cfg.topics,topic);
 					}
 				}
@@ -447,7 +471,7 @@ void printMsgs(Node* head){
 	while(curr != NULL){
 		//TODO
 		Message* currMessage = (Message*)curr->data;
-		printf("Title : %s,\n\tUsername : %s,\n\tTopic : %s\n",currMessage->title,currMessage->username,currMessage->topic);
+		printf("Id : %d,\n\tTitle : %s,\n\tUsername : %s,\n\tTopic : %s\n",currMessage->id,currMessage->title,currMessage->username,currMessage->topic);
 		curr = curr->next;
 	}
 }
