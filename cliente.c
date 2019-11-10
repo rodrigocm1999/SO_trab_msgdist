@@ -222,6 +222,11 @@ void* fifoListener(void* data){
 				printf("Non existent topic\n");
 				break;
 			}
+			case MESSAGE_NOTIFICATION:{
+				MessageNotification* notification = buffer;
+				printf("New Message with id : '%d' from topic : '%s'\n",notification->id,notification->topic);
+				break;
+			}
 
 			
 			default:

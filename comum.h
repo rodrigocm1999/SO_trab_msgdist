@@ -27,6 +27,7 @@
 #define USERNAME_OK 13
 #define NEW_MESSAGE 20
 #define BAD_MESSAGE 21
+#define MESSAGE_NOTIFICATION 22
 #define GET_TOPICS 30
 #define DELETED_TOPIC 31
 #define SUBSCRIBE_TOPIC 32
@@ -71,6 +72,11 @@ typedef struct Buffer{
 	void* ptr;
 	unsigned int size;
 }Buffer;
+
+typedef struct MessageNotification{
+	int id;
+	char topic[TOPIC_L];
+}MessageNotification;
 
 Buffer joinCommandStruct(Command* command,void* other, size_t otherSize);
 

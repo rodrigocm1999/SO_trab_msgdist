@@ -34,6 +34,8 @@ Message* new_Message();
 void* checkAllClientsState(void* data);
 void* clientMessageReciever(void* data);
 void sendToClient(User* user,int cmd,void* other, size_t size);
+Buffer prepareBuffer(int cmd,void* other, size_t size);
+void sendBufferToClient(User* user,Buffer buffer);// Used in loops
 void* heartBeat(void* data);
 
 void printTopics(Node* head);

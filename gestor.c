@@ -252,7 +252,7 @@ void* clientMessageReciever(void* data){
 		switch (command->cmd){
 
 
-			case NEW_USER:{ // TODO check if another user with same name exists and send to client new name
+			case NEW_USER:{
 				NewClientInfo* info = (NewClientInfo*)buffer;
 				User* newUser = malloc(sizeof(User));
 				newUser->pid = info->pid;
@@ -335,6 +335,26 @@ void* clientMessageReciever(void* data){
 						strcpy(topic,realMessage->topic);
 						LinkedList_append(&cfg.topics,topic);
 					}
+
+
+					// Send Notification to all subscribed clients
+					MessageNotification notification;
+					notification.id = realMessage->id;
+					strncpy(notification.topic,realMessage->topic,TOPIC_L);
+					Buffer buffer = prepareBuffer(MESSAGE_NOTIFICATION,&notification,sizeof(MessageNotification));
+
+					Node* currUserNode = cfg.users.head;
+					while(currUserNode != NULL){
+						User* currUser = (User*) currUserNode->data;
+						// If user is subscribed send notification
+						if(getUserTopicNode(currUser,realMessage->topic) != NULL){
+							sendBufferToClient(currUser,buffer);
+						}
+
+						currUserNode = currUserNode->next;
+					}
+					
+					fprintf(stderr,"New Message from '%s', title :'%s'\n",realMessage->username,realMessage->title);
 				}
 				break;
 			}
@@ -356,7 +376,7 @@ void* clientMessageReciever(void* data){
 					if(userTopic == NULL){
 						LinkedList_append(&user->topics,topicNode->data);
 					}
-					fprintf(stderr,"User \"%s\" subscribed to topic \"%s\"\n",user->username,topic);
+					fprintf(stderr,"[INFO]User \"%s\" subscribed to topic \"%s\"\n",user->username,topic);
 					sendToClient(user,SUBSCRIBED_TO_TOPIC,NULL,0);
 				}else{
 				 	sendToClient(user,NON_EXISTENT_TOPIC,NULL,0);
@@ -497,7 +517,7 @@ void printUsers(Node* head){
 		curr = curr->next;
 	}
 }
-// TODO
+
 void printMsgs(Node* head){
 	Node* curr = head;
 	printf("Msgs on Memory : %d total\n", LinkedList_getSize(&cfg.msgs));
@@ -530,8 +550,22 @@ void sendToClient(User* user,int cmd,void* other, size_t size){
 	command.structSize = size;
 
 	Buffer buffer = joinCommandStruct(&command,other,size);
-	int written = write(user->fifo,buffer.ptr,buffer.size);
+	write(user->fifo,buffer.ptr,buffer.size);
 	free(buffer.ptr);
+}
+
+Buffer prepareBuffer(int cmd,void* other, size_t size){
+	Command command;
+	command.cmd = cmd;
+	command.senderPid = getpid();
+	command.structSize = size;
+
+	Buffer buffer = joinCommandStruct(&command,other,size);
+	return buffer;
+}
+
+void sendBufferToClient(User* user,Buffer buffer){ //Used in loops
+	write(user->fifo,buffer.ptr,buffer.size);
 }
 
 Node* getUserNode(pid_t pid){
