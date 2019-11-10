@@ -5,7 +5,7 @@ ClientConfig cfg;
 
 int main(int argc,char* argv[]){
 
-
+	// Checks if server is running
 	if(!isServerRunning()){
 		printf("Server not running\nExiting\n");
 		exit(0);
@@ -20,20 +20,21 @@ int main(int argc,char* argv[]){
 	//Criar fifo para servidor enviar coisas para cliente
 	// Enviar PID, username e talvez path para FIFO
 	// criar fifo em /tmp/
-	sprintf (cfg.fifoPath,"/tmp/%d",getpid());
-	int result = mkfifo(cfg.fifoPath,0666);
-	if(result != 0) {
-		fprintf(stderr,"[ERROR]Creating listener fifo");
-	}
+	{
+		sprintf (cfg.fifoPath,"/tmp/%d",getpid());
+		int result = mkfifo(cfg.fifoPath,0666);
+		if(result != 0) {
+			fprintf(stderr,"[ERROR]Creating listener fifo");
+		}
 
-	cfg.fifo = open(cfg.fifoPath,O_RDWR);
-	printf("Starting \n");
-	if(cfg.fifo == -1 ){
-		printf("fifo creation error (FIFO)\n");
-		printf("Error: %d\n",errno);
-		exit(0);
+		cfg.fifo = open(cfg.fifoPath,O_RDWR);
+		printf("Starting \n");
+		if(cfg.fifo == -1 ){
+			printf("fifo creation error (FIFO)\n");
+			printf("Error: %d\n",errno);
+			exit(0);
+		}
 	}
-
 
 	cfg.server = open(LISTENER_PATH,O_WRONLY);
 	{
@@ -60,7 +61,6 @@ int main(int argc,char* argv[]){
 		}
 		
 	}
-	//pause();
 	// Criar thread para receber info do servidor
 	pthread_t listenerThread;
 	pthread_create(&listenerThread,NULL,fifoListener,(void*)NULL);
@@ -134,9 +134,9 @@ int main(int argc,char* argv[]){
 
 
 				if (menu_ret2 == 1 ){
-
 					// List Topics
-
+					sendToServer(GET_TOPICS,NULL,0);
+					
 				}
 				if (menu_ret2 == 2 ){
 					
@@ -152,14 +152,24 @@ int main(int argc,char* argv[]){
             while (menu_ret2 != 4);
         }
 		if(menu_ret == 3){
+			//Subscribe to Topic
+			char buffer[TOPIC_L];
 
-			mvprintw (5, 23, "Lol jk! This is a demo program.");
-            mvprintw (6, 26, "Press any key to return.");
-            getch();
+			mvprintw(10,27,"Topic Name: ");
+			refresh();
+			scanw("%s",buffer);
+
+			sendToServer(SUBSCRIBE_TOPIC,buffer,TOPIC_L);
 		}
 		if(menu_ret == 4){
-
 			//Unsubscribe to Topic
+			char buffer[TOPIC_L];
+
+			mvprintw(10,27,"Topic Name: ");
+			refresh();
+			scanw("%s",buffer);
+
+			sendToServer(UNSUBSCRIBE_TOPIC,buffer,TOPIC_L);
 		}
 
 		if(menu_ret == 5){
@@ -168,70 +178,15 @@ int main(int argc,char* argv[]){
 		}
 
 		erase(); 
-		/*
-		switch (choice)
-		{
-		case 0:{ // Exit
-			printf("Exiting\n");
-			shutdown(SIGINT);
-			break;
-		}
-		case 1:{
-
-			
-			Message message;
-			strcpy(message.username,cfg.username);
-			char topic[20], titulo[100];
-			char msg[1000];
-
-
-			printf("Topico da menssagem: ");
-			scanf("%s",message.topic);
-
-
-			printf("Titulo da menssagem: ");
-			scanf("%s",message.title);
-
-				//Message newMsg(username,topic,titulo,msg);
-
-			printf("Mensagem: ");
-			scanf("%s",message.body);
-
-			sendToServer(NEW_MESSAGE,&message,sizeof(Message));
-			printf("Mensagem enviada\n");
-
-			break;
-		}
-		case 2:{ // List Topics
-			break;
-		}
-		case 3:{ // List Titles in Topic
-			break;
-		}
-		case 4:{ // Read Message in Topic
-			break;
-		}
-		case 5:{ // Subscribe to Topic
-			break;
-		}
-		case 6:{// Unsubscribe to topic
-			break;
-		}
-		default:
-			printf("Invalid Option\n");
-			break;
-		}
-		*/
+		// Write Message
+		// List Topics
+		// List Titles in Topic
+		// Read Message in Topic
+		// Subscribe to Topic
+		// Unsubscribe to topic
 
 	}
 
-
-	/*initscr();
-	cbreak();
-	int nLines = 20,nCols = 100,y0 = 10,x0 = 10;
-	WINDOW * win = newwin(nLines, nCols, y0, x0);
-	wrefresh(win);
-	while(1){pause();}*/
 	endwin();
 	return 0;
 }
@@ -248,12 +203,31 @@ void* fifoListener(void* data){
 		Command* command = (Command*)buffer;
 		buffer = buffer + sizeof(Command);
 
-		if(command->cmd == SERVER_SHUTDOWN){
-			printf("Server "); // Intented to not change line
-			shutdown(SIGINT);
-		}
-		
 
+		switch (command->cmd) {
+
+			case SERVER_SHUTDOWN:{
+				printf("Server "); // Intented to not change line
+				shutdown(SIGINT);
+			}
+			case SUBSCRIBED_TO_TOPIC:{
+				printf("Subscrition sucessuful\n");
+				break;
+			}
+			case UNSUBSCRIBE_TOPIC:{
+				printf("Unsubscrition sucessuful\n");
+				break;
+			}
+			case NON_EXISTENT_TOPIC:{
+				printf("Non existent topic\n");
+				break;
+			}
+
+			
+			default:
+				printf("Not Recognized Command\n");
+				break;
+		}
 	}
 }
 

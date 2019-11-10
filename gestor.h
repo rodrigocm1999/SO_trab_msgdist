@@ -49,3 +49,5 @@ Node* getUserNodeByUsername(char* username);
 User* getUserByUsername(char* username);
 Node* getTopicNode(char* topic);
 Node* getUserTopicNode(User* user,char* topic);
+
+int deleteUserTopic(User* user,char* topic);

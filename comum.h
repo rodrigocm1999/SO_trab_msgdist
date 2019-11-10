@@ -29,8 +29,10 @@
 #define BAD_MESSAGE 21
 #define GET_TOPICS 30
 #define DELETED_TOPIC 31
-#define SUBSCRIBE_TOPIC 35
-#define UNSUBSCRIBE_TOPIC 36
+#define SUBSCRIBE_TOPIC 32
+#define UNSUBSCRIBE_TOPIC 33
+#define SUBSCRIBED_TO_TOPIC 34
+#define NON_EXISTENT_TOPIC 35
 #define HEARTBEAT_CHECK 40
 #define HEARTBEAT_ISALIVE 41
 
@@ -50,7 +52,7 @@ typedef struct User{
 	int beat; //bool
 	char username[USERNAME_L];
 	int fifo;
-	LinkedList topics;
+	LinkedList topics; // each node points to an existing char*
 }User;
 
 typedef struct NewClientInfo{

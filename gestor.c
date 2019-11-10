@@ -356,11 +356,44 @@ void* clientMessageReciever(void* data){
 					if(userTopic == NULL){
 						LinkedList_append(&user->topics,topicNode->data);
 					}
-					//sendToClient(user,SUBSCRIBED_TO_TOPIC,NULL,0);
+					fprintf(stderr,"User \"%s\" subscribed to topic \"%s\"\n",user->username,topic);
+					sendToClient(user,SUBSCRIBED_TO_TOPIC,NULL,0);
 				}else{
-				 //	sendToClient(user,TOPIC_DOESNT_EXIST,NULL,0);
+				 	sendToClient(user,NON_EXISTENT_TOPIC,NULL,0);
 				}
-				//TODO warn user of what happened
+				break;
+			}
+
+
+			case UNSUBSCRIBE_TOPIC:{
+				User* user = getUser(command->senderPid);
+				char* topic = buffer;
+				
+				if(deleteUserTopic(user,topic) == TRUE){
+					fprintf(stderr,"User \"%s\" unsubscribed to topic \"%s\"\n",user->username,topic);
+					sendToClient(user,UNSUBSCRIBE_TOPIC,NULL,0);
+				}else{
+				 	sendToClient(user,NON_EXISTENT_TOPIC,NULL,0);
+				}
+				break;
+			}
+
+
+			case GET_TOPICS:{
+				int topicsAmount = LinkedList_getSize(&cfg.topics);
+				int totalBufferSize = sizeof(int) + topicsAmount * TOPIC_L;
+				void* ptr = malloc(totalBufferSize);
+				void* temp = ptr + sizeof(int);
+
+				Node* curr = cfg.topics.head;
+				for(int i = 0; i < topicsAmount && curr != NULL; i++){
+					void* pos = temp + i * TOPIC_L;
+					memcpy(pos,curr->data,TOPIC_L);
+					curr = curr->next;
+				}
+
+				User* user = getUser(command->senderPid);
+				sendToClient(user,GET_TOPICS,ptr,totalBufferSize);
 
 				break;
 			}
@@ -399,6 +432,7 @@ void* checkAllClientsState(void* data){
 		}
 	}
 }
+
 void userLeft(Node* node){
 	LinkedList_detachNode(&cfg.users,node);
 	// Limpar tudo acerca do utilizador
@@ -554,4 +588,17 @@ Node* getUserTopicNode(User* user,char* topic){
 		curr = curr->next;
 	}
 	return NULL;
+}
+
+int deleteUserTopic(User* user,char* topic){
+
+	Node* userTopicNode = getUserTopicNode(user,topic);
+	if(userTopicNode == NULL){
+		return FALSE;
+	}
+
+	LinkedList_detachNode(&user->topics,userTopicNode);
+	free(userTopicNode); 
+
+	return TRUE;
 }
