@@ -4,9 +4,22 @@
 ServerConfig cfg;
 
 int main(int argc,char* argv[]){	
-	cfg.users.head = NULL;
-	cfg.topics.head = NULL;
-	cfg.msgs.head = NULL;
+	// Variable Initialization
+	{
+		cfg.msgId = 0;
+		cfg.filter = 1;
+		cfg.users.head = NULL;
+		cfg.topics.head = NULL;
+		cfg.msgs.head = NULL;
+		int error = 0;
+		error |= pthread_mutex_init(&cfg.mutex.msgsLock,NULL);
+		error |= pthread_mutex_init(&cfg.mutex.topicsLock,NULL);
+		error |= pthread_mutex_init(&cfg.mutex.usersLock,NULL);
+		if(error != 0){
+			printf("Mutex creation has failed\n");
+			shutdown(SIGINT);
+		}
+	}
 	//check for arguments and already running server
 	{
 		int checkServerRunning = 1;
@@ -87,15 +100,15 @@ int main(int argc,char* argv[]){
 	}
 	
 	// Start listener for messages
-	pthread_t listenerThread;
-	pthread_create(&listenerThread,NULL,clientMessageReciever,(void*)NULL);
-	pthread_t checkClientsThread;
-	pthread_create(&listenerThread,NULL,checkAllClientsState,(void*)NULL);
+	{
+		pthread_t listenerThread;
+		pthread_create(&listenerThread,NULL,clientMessageReciever,(void*)NULL);
+		pthread_t checkClientsThread;
+		pthread_create(&listenerThread,NULL,checkAllClientsState,(void*)NULL);
+		pthread_t checkMessageTimeoutThread;
+		pthread_create(&listenerThread,NULL,checkMessageTimeout,(void*)NULL);
+	}
 
-
-	// Ready config variables
-	cfg.msgId = 0;
-	cfg.filter = 1;
 	// Change Default Signal Effect
 	signal(SIGINT, shutdown);
 
@@ -140,18 +153,29 @@ int main(int argc,char* argv[]){
 			}
 
 			else if(strcmp(cmd,"topic") == 0){
-				char* topic = strtok(command,DELIM);
-				Node* curr = cfg.msgs.head;
-				while( curr != NULL ){
-					Message* currMessage = (Message*)curr->data;
-					if(strcmp(currMessage->topic,topic) == 0){
-						printf("Id : %d, Title : %s\n",currMessage->id,currMessage->title);	
+				char* topic = strtok(NULL,DELIM);
+				if(topic != NULL){
+					if(getTopicNode(topic) == NULL){
+						printf("Non existing topic : '%s'\n",topic);
+					}else{
+						int counter = 0;
+						Node* curr = cfg.msgs.head;
+						while( curr != NULL ){
+							Message* currMessage = (Message*)curr->data;
+							if(strcmp(currMessage->topic,topic) == 0){
+								++counter;
+								printf("Id : %d, Title : %s\n",currMessage->id,currMessage->title);	
+							}
+							curr = curr->next;
+						}
+						printf("Total %d\n",counter);
 					}
-					curr = curr->next;
+				}else{
+					printf("Invalid command usage\nExample : topic TOPICNAME\n");
 				}
 			}
 
-			else if(strcmp(cmd,"del") == 0){//TODO
+			else if(strcmp(cmd,"del") == 0){
 				char* token = strtok(NULL,DELIM);
 				int id = atoi(token);
 				if(id == 0){
@@ -166,7 +190,7 @@ int main(int argc,char* argv[]){
 							LinkedList_detachNode(&cfg.msgs,curr);
 							free(message);
 							free(curr);
-							printf("Message Deleted id = \"%d\"\n",id);
+							printf("Deleted , id = \"%d\"\n",id);
 							found = TRUE;
 							break;
 						}
@@ -178,9 +202,21 @@ int main(int argc,char* argv[]){
 				}
 			}
 
-			else if(strcmp(cmd,"kick") == 0){//TODO
+			else if(strcmp(cmd,"kick") == 0){
 				char* username = strtok(NULL,DELIM);
-			}	
+				if(username != NULL){
+					Node* userNode = getUserNodeByUsername(username);
+				
+					if(userNode != NULL){
+						sendToClient((User*)userNode->data,KICKED,NULL,0);
+						userLeft(userNode);
+					}else{
+						printf("No user with name : '%s'\n",username);
+					}
+				}else{
+					printf("Invalid command usage\nExample : kick USERNAME\n");
+				}
+			}
 
 			else if(strcmp(cmd,"shutdown") == 0){
 				shutdown(SIGINT);
@@ -214,7 +250,7 @@ int main(int argc,char* argv[]){
 				printf("Number of bad words : %d\n",nBadWords);
 			}
 
-			else { // Done
+			else {
 				printf("Write \"help\" to get command information\n");
 			}
 		}
@@ -225,7 +261,7 @@ int main(int argc,char* argv[]){
 
 // TODO
 void* clientMessageReciever(void* data){
-	
+
 	int result = mkfifo(LISTENER_PATH,0666);
 	if(result != 0) {
 		fprintf(stderr,"[ERROR]Creating listener fifo : already exists\n");
@@ -240,11 +276,10 @@ void* clientMessageReciever(void* data){
 
 	
 	while(1){
-		int const bufferSize = 8192;
-		char buff[bufferSize];
+		char buff[8192];
 		void* buffer = buff;
 
-		int bCount = read(fifo, buffer, bufferSize * sizeof(char));
+		int bCount = read(fifo, buffer, 8192 * sizeof(char));
 		Command* command = (Command*)buffer;
 		buffer = buffer + sizeof(Command);
 		//fprintf(stderr,"[INFO]Recebeu commando : %d , size : %zu , clientPid : %d\n", command->cmd,command->structSize,command->clientPid);
@@ -277,7 +312,7 @@ void* clientMessageReciever(void* data){
 					}
 				}
 
-				printf("[INFO]New Client; pid : %d , fifo : %s, Username : %s\n",command->senderPid,info->pathToFifo,newUser->username);
+				printf("[INFO]New Client; pid : %d , Username : %s\n",command->senderPid,newUser->username);
 
 				int fd = open(info->pathToFifo,O_RDWR);
 				if(fd == -1){
@@ -285,7 +320,7 @@ void* clientMessageReciever(void* data){
 				} else{
 					fprintf(stderr,"[INFO]Opened client fifo\n");
 					newUser->fifo = fd;
-					LinkedList_append(&cfg.users,newUser);
+					addUser(newUser);
 
 					if(wasRepeated){
 						sendToClient(newUser,USERNAME_REPEATED,newUser->username,USERNAME_L);
@@ -298,15 +333,16 @@ void* clientMessageReciever(void* data){
 			}
 
 
-			case NEW_MESSAGE:{			
+			case NEW_MESSAGE:{
+				User* user = getUser(command->senderPid);
 				Message* message = (Message*)buffer;
 				int allowed = 1;
 				if(cfg.filter){
 					int badWordsCount = verifyBadWords(message);
 					if(badWordsCount > cfg.maxbadWords){
 						allowed = 0;
-						fprintf(stderr,"Message Descarded, too many bad words: %d\n",badWordsCount);
-						sendToClient(getUser(command->senderPid),BAD_MESSAGE,NULL,0);
+						fprintf(stderr,"[INFO]Message Descarded, user : '%s', bad words: %d\n",user->username,badWordsCount);
+						sendToClient(user,BAD_MESSAGE,NULL,0);
 						break;
 					}
 				}
@@ -314,8 +350,9 @@ void* clientMessageReciever(void* data){
 					Message* realMessage = malloc(sizeof(Message));
 					memcpy(realMessage,message,sizeof(Message));
 					realMessage->id = ++cfg.msgId;
+					realMessage->duration = MESSAGE_DURATION;
 
-					LinkedList_append(&cfg.msgs,realMessage);
+					addMessage(realMessage);
 					Node* currTopic = cfg.topics.head;
 					//check if topic exists
 					int found = 0;
@@ -333,7 +370,7 @@ void* clientMessageReciever(void* data){
 					if(found == 0){
 						char* topic = malloc(TOPIC_L);
 						strcpy(topic,realMessage->topic);
-						LinkedList_append(&cfg.topics,topic);
+						addTopic(topic);
 					}
 
 
@@ -350,11 +387,10 @@ void* clientMessageReciever(void* data){
 						if(getUserTopicNode(currUser,realMessage->topic) != NULL){
 							sendBufferToClient(currUser,buffer);
 						}
-
 						currUserNode = currUserNode->next;
 					}
 					
-					fprintf(stderr,"New Message from '%s', title :'%s'\n",realMessage->username,realMessage->title);
+					fprintf(stderr,"[INFO]New Message , user : '%s', id : '%d', title :'%s'\n",realMessage->username,realMessage->id,realMessage->title);
 				}
 				break;
 			}
@@ -370,14 +406,17 @@ void* clientMessageReciever(void* data){
 				User* user = getUser(command->senderPid);
 				char* topic = buffer;
 				Node* topicNode = getTopicNode(topic);
+				char* topicChar = (char*)topicNode->data;
 				
 				if(topicNode != NULL){ // if topic exists
-					Node* userTopic = getUserTopicNode(user,topic);
+					Node* userTopic = getUserTopicNode(user,topicChar);
 					if(userTopic == NULL){
 						LinkedList_append(&user->topics,topicNode->data);
+						fprintf(stderr,"[INFO]User \"%s\" subscribed to topic \"%s\"\n",user->username,topic);
+						sendToClient(user,SUBSCRIBED_TO_TOPIC,NULL,0);
+					}else{
+						sendToClient(user,ALREADY_SUBSCRIBED,NULL,0);
 					}
-					fprintf(stderr,"[INFO]User \"%s\" subscribed to topic \"%s\"\n",user->username,topic);
-					sendToClient(user,SUBSCRIBED_TO_TOPIC,NULL,0);
 				}else{
 				 	sendToClient(user,NON_EXISTENT_TOPIC,NULL,0);
 				}
@@ -435,9 +474,7 @@ void* clientMessageReciever(void* data){
 	}
 }
 
-// TODO
 void* checkAllClientsState(void* data){
-	//Every ten seconds check if users have TODO 
 	while(1){
 		sleep(10);
 		Node* curr = cfg.users.head;
@@ -449,6 +486,26 @@ void* checkAllClientsState(void* data){
 			}
 			user->beat = FALSE;
 			curr = curr->next;
+		}
+	}
+}
+
+void* checkMessageTimeout(void* data){
+	int const sleepTime = 1;
+	while(TRUE){
+		sleep(sleepTime);
+		Node* curr = cfg.msgs.head;
+		while(curr!=NULL){
+			Message* message = (Message*)curr->data;
+			Node* next = curr->next;
+			message->duration = message->duration - sleepTime;
+			if(message->duration < 0){
+				//Delete message
+				LinkedList_detachNode(&cfg.msgs,curr);
+				free(curr->data);
+				free(curr);
+			}
+			curr = next;
 		}
 	}
 }
@@ -465,6 +522,7 @@ void userLeft(Node* node){
 		currNode = nextnode;
 	}
 	// 2º limpar o user
+	close(user->fifo);
 	free(user);
 	// 3º limpar o node do user 
 	free(node);
@@ -635,4 +693,22 @@ int deleteUserTopic(User* user,char* topic){
 	free(userTopicNode); 
 
 	return TRUE;
+}
+
+void addUser(User* newUser){
+	pthread_mutex_lock(&cfg.mutex.usersLock);
+	LinkedList_append(&cfg.users,newUser);
+	pthread_mutex_unlock(&cfg.mutex.usersLock);
+}
+
+void addTopic(char* newTopic){
+	pthread_mutex_lock(&cfg.mutex.topicsLock);
+	LinkedList_append(&cfg.topics,newTopic);
+	pthread_mutex_unlock(&cfg.mutex.topicsLock);
+}
+
+void addMessage(Message* message){
+	pthread_mutex_lock(&cfg.mutex.msgsLock);
+	LinkedList_append(&cfg.msgs,message);
+	pthread_mutex_unlock(&cfg.mutex.msgsLock);
 }

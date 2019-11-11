@@ -11,8 +11,8 @@ int main(int argc,char* argv[]){
 		exit(0);
 	}
 	
-	signal(SIGINT,shutdown);
-	signal(SIGPIPE,shutdown);
+	signal(SIGINT,signalHandler);
+	signal(SIGPIPE,signalHandler);
 	printf("%d\n",getpid());
 	printf("Username: \n");
 	scanf("%s",cfg.username);
@@ -174,7 +174,7 @@ int main(int argc,char* argv[]){
 
 		if(menu_ret == 5){
 			mvprintw(6, 34,"Exiting");
-			shutdown(SIGINT);
+			shutdown(TRUE);
 		}
 
 		erase(); 
@@ -208,7 +208,11 @@ void* fifoListener(void* data){
 
 			case SERVER_SHUTDOWN:{
 				printf("Server "); // Intented to not change line
-				shutdown(SIGINT);
+				shutdown(FALSE);
+			}
+			case KICKED:{
+				printf("Kicked from server\nServer "); // Intented to not change line
+				shutdown(FALSE);
 			}
 			case SUBSCRIBED_TO_TOPIC:{
 				printf("Subscrition sucessuful\n");
@@ -216,6 +220,10 @@ void* fifoListener(void* data){
 			}
 			case UNSUBSCRIBE_TOPIC:{
 				printf("Unsubscrition sucessuful\n");
+				break;
+			}
+			case ALREADY_SUBSCRIBED:{
+				printf("Already subscribed\n");
 				break;
 			}
 			case NON_EXISTENT_TOPIC:{
@@ -227,6 +235,10 @@ void* fifoListener(void* data){
 				printf("New Message with id : '%d' from topic : '%s'\n",notification->id,notification->topic);
 				break;
 			}
+			case BAD_MESSAGE:{
+				printf("Message discarded\n");
+				break;
+			}
 
 			
 			default:
@@ -236,18 +248,24 @@ void* fifoListener(void* data){
 	}
 }
 
-void shutdown(int signal){
-	if(signal == SIGPIPE){
-		printf("Server Down\n");
-	}
+void shutdown(int warnServer){
 	printf("Shuting Down\n");
-	sendToServer(USER_LEAVING,NULL,0);
-
+	if(warnServer){
+		sendToServer(USER_LEAVING,NULL,0);
+	}
 	close(cfg.server);
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
+	sleep(1);
 	execlp("reset","reset",NULL); // resets terminal
 	exit(0);
+}
+
+void signalHandler(int signal){
+	if(signal == SIGPIPE){
+		printf("Server Down\n");
+	}
+	shutdown(FALSE);
 }
 
 void* heartbeat(void* data){

@@ -13,6 +13,8 @@
 #define TRUE 1
 #define FALSE 0
 
+#define MESSAGE_DURATION 500 // in seconds
+
 #define LISTENER_PATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32
 #define TOPIC_L 20
@@ -21,6 +23,7 @@
 
 //Protocol
 #define SERVER_SHUTDOWN -10
+#define KICKED -9
 #define NEW_USER 10
 #define USER_LEAVING 11
 #define USERNAME_REPEATED 12
@@ -33,7 +36,8 @@
 #define SUBSCRIBE_TOPIC 32
 #define UNSUBSCRIBE_TOPIC 33
 #define SUBSCRIBED_TO_TOPIC 34
-#define NON_EXISTENT_TOPIC 35
+#define ALREADY_SUBSCRIBED 35
+#define NON_EXISTENT_TOPIC 36
 #define HEARTBEAT_CHECK 40
 #define HEARTBEAT_ISALIVE 41
 

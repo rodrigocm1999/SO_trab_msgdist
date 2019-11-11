@@ -11,6 +11,14 @@
 #define MSGEND_L 11
 
 
+
+struct listsMutex{
+   pthread_mutex_t msgsLock;
+   pthread_mutex_t topicsLock;
+   pthread_mutex_t usersLock;
+};
+
+
 typedef struct ServerConfig{
    int sendVerif;
    int recieveVerif;
@@ -20,10 +28,8 @@ typedef struct ServerConfig{
    LinkedList msgs;
    LinkedList topics;
    LinkedList users;
+   struct listsMutex mutex;
 }ServerConfig;
-
-
-
 
 
 
@@ -33,6 +39,7 @@ Message* new_Message();
 
 void* checkAllClientsState(void* data);
 void* clientMessageReciever(void* data);
+void* checkMessageTimeout(void* data);
 void sendToClient(User* user,int cmd,void* other, size_t size);
 Buffer prepareBuffer(int cmd,void* other, size_t size);
 void sendBufferToClient(User* user,Buffer buffer);// Used in loops
@@ -53,3 +60,7 @@ Node* getTopicNode(char* topic);
 Node* getUserTopicNode(User* user,char* topic);
 
 int deleteUserTopic(User* user,char* topic);
+
+void addUser(User* newUser);
+void addTopic(char* newTopic);
+void addMessage(Message* message);

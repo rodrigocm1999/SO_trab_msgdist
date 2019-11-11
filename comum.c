@@ -18,7 +18,7 @@ Buffer joinCommandStruct(Command* command,void* other, size_t otherSize){
     void * dest = buffer.ptr;
     
     memcpy(dest,command,sizeof(Command));
-    if(other != NULL && otherSize != 0){
+    if(otherSize != 0 && other != NULL){
         dest = dest + sizeof(Command);
         memcpy(dest,other,otherSize);
     }
