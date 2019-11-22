@@ -10,10 +10,10 @@
 #include <pthread.h>
 #include "utils.h"
 
-#define TRUE 1
-#define FALSE 0
+#define true 1
+#define false 0
 
-#define MESSAGE_DURATION 500 // in seconds
+#define MESSAGE_DURATION 5 // in seconds
 
 #define LISTENER_PATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32

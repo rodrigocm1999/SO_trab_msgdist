@@ -1,5 +1,6 @@
 #include "comum.h"
 
+#define RECIEVE_BUFFER_SIZE 1024 * 16
 #define DELIM " \n"
 
 #define WORDSNOT "WORDSNOT"
@@ -11,13 +12,11 @@
 #define MSGEND_L 11
 
 
-
 struct listsMutex{
    pthread_mutex_t msgsLock;
    pthread_mutex_t topicsLock;
    pthread_mutex_t usersLock;
 };
-
 
 typedef struct ServerConfig{
    int sendVerif;
@@ -32,10 +31,7 @@ typedef struct ServerConfig{
 }ServerConfig;
 
 
-
 int verifyBadWords(Message* message);
-Message* new_Message();
-
 
 void* checkAllClientsState(void* data);
 void* clientMessageReciever(void* data);
@@ -58,9 +54,14 @@ Node* getUserNodeByUsername(char* username);
 User* getUserByUsername(char* username);
 Node* getTopicNode(char* topic);
 Node* getUserTopicNode(User* user,char* topic);
-
+Node *getMessageNodeById(int id);
+Message *getMessageById(int id);
 int deleteUserTopic(User* user,char* topic);
+int messagesInTopic(char *topic);
 
-void addUser(User* newUser);
-void addTopic(char* newTopic);
-void addMessage(Message* message);
+void lock_m(pthread_mutex_t *mutex);
+void unlock_m(pthread_mutex_t *mutex);
+void lock_users(int bool);
+void lock_msgs(int bool);
+void lock_topics(int bool);
+void lock_all(int bool);
