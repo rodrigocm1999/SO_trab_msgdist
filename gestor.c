@@ -421,6 +421,7 @@ void *clientMessageReciever(void *data)
 			User *newUser = malloc(sizeof(User));
 			newUser->pid = info->pid;
 			newUser->beat = true;
+			newUser->topics.head = NULL;
 			strcpy(newUser->username, info->username);
 
 			int wasRepeated = false;
@@ -477,6 +478,7 @@ void *clientMessageReciever(void *data)
 			User *user = getUser(command->senderPid);
 			Message *message = (Message *)buffer;
 			int allowed = 1;
+			printf("test 0\n");
 			if (cfg.filter)
 			{
 				int badWordsCount = verifyBadWords(message);
@@ -494,6 +496,8 @@ void *clientMessageReciever(void *data)
 				memcpy(realMessage, message, sizeof(Message));
 				realMessage->id = ++cfg.msgId;
 				realMessage->duration = MESSAGE_DURATION;
+
+				printf("test 1\n");
 
 				LinkedList_append(&cfg.msgs, realMessage);
 				Node *currTopic = cfg.topics.head;
@@ -515,7 +519,7 @@ void *clientMessageReciever(void *data)
 				//add new topic if doesn't exist
 				if (found == 0)
 				{
-					char *topic = malloc(TOPIC_L);
+					char *topic = malloc(sizeof(char) * TOPIC_L);
 					strcpy(topic, realMessage->topic);
 					LinkedList_append(&cfg.topics, topic);
 				}
@@ -525,14 +529,17 @@ void *clientMessageReciever(void *data)
 				notification.id = realMessage->id;
 				strncpy(notification.topic, realMessage->topic, TOPIC_L);
 				Buffer buffer = prepareBuffer(MESSAGE_NOTIFICATION, &notification, sizeof(MessageNotification));
-
+				printf("test 2\n");
 				Node *currUserNode = cfg.users.head;
 				while (currUserNode != NULL)
 				{
+					printf("test 3\n");
 					User *currUser = (User *)currUserNode->data;
+					printf("test 3 after\n");
 					// If user is subscribed send notification
 					if (getUserTopicNode(currUser, realMessage->topic) != NULL)
 					{
+						printf("test send buffer to . -> %s\n",currUser->username);
 						sendBufferToClient(currUser, buffer);
 					}
 					currUserNode = currUserNode->next;
@@ -559,7 +566,7 @@ void *clientMessageReciever(void *data)
 			User *user = getUser(command->senderPid);
 			char *topic = buffer;
 			Node *topicNode = getTopicNode(topic);
-			printf("No Error yet\n");
+
 			if (topicNode != NULL)
 			{ // if topic exists
 				char *topicChar = (char *)topicNode->data;
@@ -674,6 +681,7 @@ void *checkMessageTimeout(void *data)
 	while (true)
 	{
 		sleep(sleepTime);
+		lock_msgs(true);
 		Node *curr = cfg.msgs.head;
 		while (curr != NULL)
 		{
@@ -689,6 +697,7 @@ void *checkMessageTimeout(void *data)
 			}
 			curr = next;
 		}
+		lock_msgs(false);
 	}
 }
 
@@ -733,7 +742,7 @@ int verifyBadWords(Message *message)
 void printTopics(Node *head)
 {
 	Node *curr = head;
-	printf("Topics : %d total\n", LinkedList_getSize(&cfg.topics));
+	printf("Topics : %d total\n#Topic -> users subscribed\n", LinkedList_getSize(&cfg.topics));
 
 	while (curr != NULL)
 	{ //TODO
@@ -903,6 +912,7 @@ Node *getTopicNode(char *topic)
 
 Node *getUserTopicNode(User *user, char *topic)
 {
+	printf("Get user topic node user: %s - topic : %s\n",user->username,topic);
 	Node *curr = user->topics.head;
 	while (curr != NULL)
 	{
@@ -911,6 +921,7 @@ Node *getUserTopicNode(User *user, char *topic)
 			return curr;
 		curr = curr->next;
 	}
+	printf("Get user topic node End\n");
 	return NULL;
 }
 
