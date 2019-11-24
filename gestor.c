@@ -912,7 +912,6 @@ Node *getTopicNode(char *topic)
 
 Node *getUserTopicNode(User *user, char *topic)
 {
-	printf("Get user topic node user: %s - topic : %s\n",user->username,topic);
 	Node *curr = user->topics.head;
 	while (curr != NULL)
 	{
@@ -921,7 +920,6 @@ Node *getUserTopicNode(User *user, char *topic)
 			return curr;
 		curr = curr->next;
 	}
-	printf("Get user topic node End\n");
 	return NULL;
 }
 
