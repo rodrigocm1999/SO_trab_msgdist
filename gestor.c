@@ -539,7 +539,7 @@ void *clientMessageReciever(void *data)
 					// If user is subscribed send notification
 					if (getUserTopicNode(currUser, realMessage->topic) != NULL)
 					{
-						printf("test send buffer to . -> %s\n",currUser->username);
+						printf("test send buffer to . -> %s\n", currUser->username);
 						sendBufferToClient(currUser, buffer);
 					}
 					currUserNode = currUserNode->next;
@@ -701,6 +701,38 @@ void *checkMessageTimeout(void *data)
 	}
 }
 
+int verifyBadWords(Message *message)
+{
+	write(cfg.sendVerif, message->title, strlen(message->title));
+	write(cfg.sendVerif, "\n", 1);
+	write(cfg.sendVerif, message->topic, strlen(message->topic));
+	write(cfg.sendVerif, "\n", 1);
+	write(cfg.sendVerif, message->body, strlen(message->body));
+	write(cfg.sendVerif, "\n", 1);
+	write(cfg.sendVerif, MSGEND, MSGEND_L);
+
+	int const bufferSize = 4;
+	char buffer[bufferSize];
+	read(cfg.recieveVerif, buffer, bufferSize * sizeof(char));
+
+	int nBadWords = atoi(buffer);
+	return nBadWords;
+}
+
+void shutdown(int signal)
+{
+	printf("Exiting\n");
+	unlink(LISTENER_PATH);
+	Node *curr = cfg.users.head;
+	while (curr != NULL)
+	{
+		User *currUser = (User *)curr->data;
+		sendToClient(currUser, SERVER_SHUTDOWN, NULL, 0);
+		curr = curr->next;
+	}
+	exit(0);
+}
+
 void userLeft(Node *node)
 {
 	LinkedList_detachNode(&cfg.users, node);
@@ -721,22 +753,30 @@ void userLeft(Node *node)
 	free(node);
 }
 
-int verifyBadWords(Message *message)
+void sendToClient(User *user, int cmd, void *other, size_t size)
 {
-	write(cfg.sendVerif, message->title, strlen(message->title));
-	write(cfg.sendVerif, "\n", 1);
-	write(cfg.sendVerif, message->topic, strlen(message->topic));
-	write(cfg.sendVerif, "\n", 1);
-	write(cfg.sendVerif, message->body, strlen(message->body));
-	write(cfg.sendVerif, "\n", 1);
-	write(cfg.sendVerif, MSGEND, MSGEND_L);
+	Command command;
+	command.cmd = cmd;
+	command.senderPid = getpid();
+	command.structSize = size;
 
-	int const bufferSize = 4;
-	char buffer[bufferSize];
-	read(cfg.recieveVerif, buffer, bufferSize * sizeof(char));
+	Buffer buffer = joinCommandStruct(&command, other, size);
+	write(user->fifo, buffer.ptr, buffer.size);
+	free(buffer.ptr);
+}
+Buffer prepareBuffer(int cmd, void *other, size_t size)
+{
+	Command command;
+	command.cmd = cmd;
+	command.senderPid = getpid();
+	command.structSize = size;
 
-	int nBadWords = atoi(buffer);
-	return nBadWords;
+	Buffer buffer = joinCommandStruct(&command, other, size);
+	return buffer;
+}
+void sendBufferToClient(User *user, Buffer buffer)
+{ //Used in loops
+	write(user->fifo, buffer.ptr, buffer.size);
 }
 
 void printTopics(Node *head)
@@ -761,7 +801,6 @@ void printTopics(Node *head)
 		curr = curr->next;
 	}
 }
-
 void printUsers(Node *head)
 {
 	Node *curr = head;
@@ -783,7 +822,6 @@ void printUsers(Node *head)
 		curr = curr->next;
 	}
 }
-
 void printMsgs(Node *head)
 {
 	Node *curr = head;
@@ -795,48 +833,6 @@ void printMsgs(Node *head)
 		printf("Id : %d,\n\tTitle : %s,\n\tUsername : %s,\n\tTopic : %s\n", currMessage->id, currMessage->title, currMessage->username, currMessage->topic);
 		curr = curr->next;
 	}
-}
-
-void shutdown(int signal)
-{
-	printf("Exiting\n");
-	unlink(LISTENER_PATH);
-	Node *curr = cfg.users.head;
-	while (curr != NULL)
-	{
-		User *currUser = (User *)curr->data;
-		sendToClient(currUser, SERVER_SHUTDOWN, NULL, 0);
-		curr = curr->next;
-	}
-	exit(0);
-}
-
-void sendToClient(User *user, int cmd, void *other, size_t size)
-{
-	Command command;
-	command.cmd = cmd;
-	command.senderPid = getpid();
-	command.structSize = size;
-
-	Buffer buffer = joinCommandStruct(&command, other, size);
-	write(user->fifo, buffer.ptr, buffer.size);
-	free(buffer.ptr);
-}
-
-Buffer prepareBuffer(int cmd, void *other, size_t size)
-{
-	Command command;
-	command.cmd = cmd;
-	command.senderPid = getpid();
-	command.structSize = size;
-
-	Buffer buffer = joinCommandStruct(&command, other, size);
-	return buffer;
-}
-
-void sendBufferToClient(User *user, Buffer buffer)
-{ //Used in loops
-	write(user->fifo, buffer.ptr, buffer.size);
 }
 
 int messagesInTopic(char *topic)
@@ -871,12 +867,10 @@ Node *getUserNode(pid_t pid)
 	}
 	return NULL;
 }
-
 User *getUser(pid_t pid)
 {
 	return (User *)getUserNode(pid)->data;
 }
-
 Node *getUserNodeByUsername(char *username)
 {
 	Node *curr = cfg.users.head;
@@ -891,12 +885,10 @@ Node *getUserNodeByUsername(char *username)
 	}
 	return NULL;
 }
-
 User *getUserByUsername(char *username)
 {
 	return (User *)getUserNodeByUsername(username)->data;
 }
-
 Node *getTopicNode(char *topic)
 {
 	Node *curr = cfg.topics.head;
@@ -909,7 +901,6 @@ Node *getTopicNode(char *topic)
 	}
 	return NULL;
 }
-
 Node *getUserTopicNode(User *user, char *topic)
 {
 	Node *curr = user->topics.head;
@@ -922,7 +913,6 @@ Node *getUserTopicNode(User *user, char *topic)
 	}
 	return NULL;
 }
-
 Node *getMessageNodeById(int id)
 {
 	Node *curr = cfg.msgs.head;
@@ -934,12 +924,10 @@ Node *getMessageNodeById(int id)
 		curr = curr->next;
 	}
 }
-
 Message *getMessageById(int id)
 {
 	return (Message *)getMessageNodeById(id)->data;
 }
-
 int deleteUserTopic(User *user, char *topic)
 {
 	Node *userTopicNode = getUserTopicNode(user, topic);
@@ -955,12 +943,10 @@ void lock_m(pthread_mutex_t *mutex)
 {
 	pthread_mutex_lock(mutex);
 }
-
 void unlock_m(pthread_mutex_t *mutex)
 {
 	pthread_mutex_unlock(mutex);
 }
-
 void lock_users(int bool)
 {
 	if (bool == true)
@@ -968,7 +954,6 @@ void lock_users(int bool)
 	else
 		unlock_m(&cfg.mutex.usersLock);
 }
-
 void lock_msgs(int bool)
 {
 	if (bool == true)
@@ -976,7 +961,6 @@ void lock_msgs(int bool)
 	else
 		unlock_m(&cfg.mutex.msgsLock);
 }
-
 void lock_topics(int bool)
 {
 	if (bool == true)
@@ -984,7 +968,6 @@ void lock_topics(int bool)
 	else
 		unlock_m(&cfg.mutex.topicsLock);
 }
-
 void lock_all(int bool)
 {
 	lock_users(bool);
