@@ -579,7 +579,7 @@ void *clientMessageReciever(void *data)
 					currUserNode = currUserNode->next;
 				}
 				char temp[512];
-				sprintf("[INFO]New Message , user : '%s', id : '%d', title :'%s'\n", realMessage->username, realMessage->id, realMessage->title);
+				sprintf(temp, "[INFO]New Message , user : '%s', id : '%d', title :'%s'\n", realMessage->username, realMessage->id, realMessage->title);
 				print_info(temp);
 			}
 			lock_all(false);
