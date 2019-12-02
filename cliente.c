@@ -246,6 +246,11 @@ void *fifoListener(void *data)
 			printf("Unsubscrition sucessuful\n");
 			break;
 		}
+		case TOPIC_DELETED:
+		{
+			printf("Topic deleted\n");
+			break;
+		}
 		case ALREADY_SUBSCRIBED:
 		{
 			printf("Already subscribed\n");

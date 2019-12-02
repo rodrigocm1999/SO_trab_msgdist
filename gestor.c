@@ -1,4 +1,5 @@
 #include "gestor.h"
+#include <locale.h>
 
 ServerConfig cfg;
 
@@ -17,9 +18,32 @@ int main(int argc, char *argv[])
 		error |= pthread_mutex_init(&cfg.mutex.usersLock, NULL);
 		if (error != 0)
 		{
-			printf("Mutex creation has failed\n");
+			print_info("Mutex creation has failed\n");
 			shutdown(SIGINT);
 		}
+
+		// Start ncurses windows
+		initscr();
+		const int box_width = 100;
+		int box_sizes[] = {14, 14, 3};
+		WINDOW **window_pointers = &cfg.win.info_win; // order:  info_win, output_win, input_win
+		WINDOW **border_pointers = &cfg.win.border_info_win;
+		int y_offset = 0;
+
+		for (int i = 0; i < 3; i++)
+		{
+			WINDOW *box_border = newwin(box_sizes[i], box_width, y_offset, 0);
+			border_pointers[i] = box_border;
+			box(box_border, 0, 0);
+			wrefresh(box_border);
+			//WINDOW *pdstr;
+			//pdstr = &window_pointers[i];
+			window_pointers[i] = newwin(box_sizes[i] - 2, box_width - 2, y_offset + 1, 1);
+			y_offset += box_sizes[i];
+		}
+
+		scrollok(cfg.win.info_win, true);
+		scrollok(cfg.win.output_win, true);
 	}
 	//check for arguments and already running server
 	{
@@ -30,24 +54,24 @@ int main(int argc, char *argv[])
 			switch (res)
 			{
 			case 'f':
-				printf("[INFO] Using force start option\n");
+				print_info("[INFO] Using force start option\n");
 				if (isServerRunning())
 				{
-					printf("[INFO] Deleting old listener FIFO\n");
+					print_info("[INFO] Deleting old listener FIFO\n");
 					unlink(LISTENER_PATH);
 				}
 				checkServerRunning = 0;
 				break;
 
 			default:
-				printf("Unsuported Option\n-f = force start (used after crash or kill)\n");
+				print_info("Unsuported Option\n-f = force start (used after crash or kill)\n");
 				break;
 			}
 		}
 		//check for already running server
 		if (checkServerRunning && isServerRunning())
 		{
-			printf("Program already running\nExiting\n");
+			print_info("Program already running\nExiting\n");
 			exit(0);
 		}
 	}
@@ -64,7 +88,10 @@ int main(int argc, char *argv[])
 		{
 			badWordsFile = DEFAULTWORDSNOT;
 		}
-		printf("[INFO] WORDSNOT = %s\n", badWordsFile);
+
+		char temp[64];
+		sprintf(temp, "[INFO] WORDSNOT = %s\n", badWordsFile);
+		print_info(temp);
 
 		int childPid = fork();
 		if (childPid == 0)
@@ -82,7 +109,7 @@ int main(int argc, char *argv[])
 			//start verifier on child process
 			char ver[] = "verificador";
 			execl(ver, ver, badWordsFile, (char *)NULL);
-			fprintf(stderr, "[ERROR] Bad Word Verifier Not started.\n");
+			print_info("[ERROR] Bad Word Verifier Not started.\n");
 			exit(0);
 			//Exec gave error
 		}
@@ -106,7 +133,9 @@ int main(int argc, char *argv[])
 		{
 			cfg.maxbadWords = DEFAULTMAXNOT;
 		}
-		printf("[INFO] MAXNOT = %d\n", cfg.maxbadWords);
+		char temp2[64];
+		sprintf(temp2, "[INFO] MAXNOT = %d\n", cfg.maxbadWords);
+		print_info(temp2);
 	}
 
 	// Start listener for messages
@@ -121,16 +150,22 @@ int main(int argc, char *argv[])
 
 	// Change Default Signal Effect
 	signal(SIGINT, shutdown);
-
-	printf("Write \"help\" to get command information\n");
+	print_out("Write \"help\" to get command information\n");
 
 	char command[512];
 	char *cmd;
 	while (1)
 	{
-		printf("-> ");
-		fgets(command, 512, stdin);
+		wclear(cfg.win.input_win);
+		refresh_all_windows();
+
+		//printf("-> ");
+		//mvwscanw(cfg.win.input_win, 1, 1, "%s", command);
+		wmove(cfg.win.input_win, 0, 0);
+		wgetstr(cfg.win.input_win, command);
+		//fgets(command, 512, stdin);
 		cmd = strtok(command, DELIM);
+
 		if (cmd != NULL)
 		{
 
@@ -142,24 +177,24 @@ int main(int argc, char *argv[])
 					if (strcmp(token, "on") == 0)
 					{
 						cfg.filter = 1;
-						printf("Filter is on\n");
+						print_out("Filter is on\n");
 					}
 					else if (strcmp(token, "off") == 0)
 					{
 						cfg.filter = 0;
-						printf("Filter is off\n");
+						print_out("Filter is off\n");
 					}
 					else if (strcmp(token, "status") == 0)
 					{
 						if (cfg.filter == 0)
-							printf("Filter is off\n");
+							print_out("Filter is off\n");
 						else
-							printf("Filter is on\n");
+							print_out("Filter is on\n");
 					}
 				}
 				else
 				{
-					printf("\nInvalid filter option, available : on off status\n");
+					print_out("\nInvalid filter option, available : on off status\n");
 				}
 			}
 
@@ -192,9 +227,9 @@ int main(int argc, char *argv[])
 					int id = atoi(msg_id);
 					Message *msg = getMessageById(id);
 					if (msg == NULL)
-						printf("No message with id : %s\n", msg_id);
+						wprintw(cfg.win.output_win, "No message with id : %s\n", msg_id);
 					else
-						printf("Title : %s,\nUsername : %s,\nTopic : %s,\nBody : %s;\n", msg->title, msg->username, msg->topic, msg->body);
+						wprintw(cfg.win.output_win, "Title : %s,\nUsername : %s,\nTopic : %s,\nBody : %s;\n", msg->title, msg->username, msg->topic, msg->body);
 				}
 				lock_msgs(false);
 			}
@@ -208,7 +243,7 @@ int main(int argc, char *argv[])
 				{
 					if (getTopicNode(topic) == NULL)
 					{
-						printf("Non existing topic : '%s'\n", topic);
+						wprintw(cfg.win.output_win, "Non existing topic : '%s'\n", topic);
 					}
 					else
 					{
@@ -220,16 +255,16 @@ int main(int argc, char *argv[])
 							if (strcmp(currMessage->topic, topic) == 0)
 							{
 								++counter;
-								printf("Id : %d, Title : %s\n", currMessage->id, currMessage->title);
+								wprintw(cfg.win.output_win, "Id : %d, Title : %s\n", currMessage->id, currMessage->title);
 							}
 							curr = curr->next;
 						}
-						printf("Total %d\n", counter);
+						wprintw(cfg.win.output_win, "Total %d\n", counter);
 					}
 				}
 				else
 				{
-					printf("Invalid command usage\nExample : topic TOPICNAME\n");
+					print_out("Invalid command usage\nExample : topic TOPICNAME\n");
 				}
 				lock_topics(false);
 				lock_msgs(false);
@@ -242,7 +277,7 @@ int main(int argc, char *argv[])
 				int id = atoi(token);
 				if (id == 0)
 				{
-					printf("Invalid Identifier\n");
+					print_out("Invalid Identifier\n");
 				}
 				else
 				{
@@ -256,7 +291,7 @@ int main(int argc, char *argv[])
 							LinkedList_detachNode(&cfg.msgs, curr);
 							free(message);
 							free(curr);
-							printf("Deleted , id = \"%d\"\n", id);
+							wprintw(cfg.win.output_win, "Deleted , id = \"%d\"\n", id);
 							found = true;
 							break;
 						}
@@ -264,7 +299,7 @@ int main(int argc, char *argv[])
 					}
 					if (found == false)
 					{
-						printf("Message with id = \"%d\" not found\n", id);
+						wprintw(cfg.win.output_win, "Message with id = \"%d\" not found\n", id);
 					}
 				}
 				lock_msgs(false);
@@ -285,12 +320,12 @@ int main(int argc, char *argv[])
 					}
 					else
 					{
-						printf("No user with name : '%s'\n", username);
+						wprintw(cfg.win.output_win, "No user with name : '%s'\n", username);
 					}
 				}
 				else
 				{
-					printf("Invalid command usage\nExample : kick USERNAME\n");
+					print_out("Invalid command usage\nExample : kick USERNAME\n");
 				}
 				lock_users(false);
 			}
@@ -332,30 +367,32 @@ int main(int argc, char *argv[])
 					topic_node = topic_node->next;
 				}
 
-				printf("Removed topics :");
+				print_out("Removed topics :");
 				Node *node = list.head;
 				while (node != NULL)
 				{
-					printf(" %s", (char *)node->data);
+					wprintw(cfg.win.output_win, " %s", (char *)node->data);
 					Node *node_to_delete = node;
 					node = node->next;
 					// remove topic from memory
 					free(node_to_delete->data);
 					free(node_to_delete->previous);
 				}
-				printf("\n");
+				print_out("\n");
 				lock_all(false);
 			}
 
 			else if (strcmp(cmd, "help") == 0)
 			{
 				FILE *file = fopen("help.txt", "r");
-				int const bufferSize = 2048;
-				char buffer[bufferSize];
-				int sdas = fread(buffer, sizeof(char), bufferSize, file);
-				printf("\n");
-				write(0, buffer, strlen(buffer));
-				printf("\n\n");
+				int const bufferSize = 1024;
+				char buffe[bufferSize];
+				int read_amount = fread(buffe, sizeof(char), bufferSize, file);
+				char aux[read_amount];
+				memcpy(aux, buffe, read_amount);
+				print_out("\n");
+				print_out(aux);
+				print_out("\n");
 			}
 
 			else if (strcmp(cmd, "verify") == 0)
@@ -371,12 +408,14 @@ int main(int argc, char *argv[])
 				char buffer[4];
 				read(cfg.recieveVerif, buffer, 4);
 				int nBadWords = atoi(buffer);
-				printf("Number of bad words : %d\n", nBadWords);
+				char str[64];
+				sprintf(str, "Number of bad words : %d\n", nBadWords);
+				print_out(str);
 			}
 
 			else
 			{
-				printf("Write \"help\" to get command information\n");
+				print_out("Write \"help\" to get command information\n");
 			}
 		}
 	}
@@ -390,14 +429,13 @@ void *clientMessageReciever(void *data)
 	int result = mkfifo(LISTENER_PATH, 0666);
 	if (result != 0)
 	{
-		fprintf(stderr, "[ERROR]Creating listener fifo : already exists\n");
+		print_info("[ERROR]Creating listener fifo : already exists\n");
 		exit(0);
 	}
 	int fifo = open(LISTENER_PATH, O_RDWR);
 	if (fifo == -1)
 	{
-		printf("[ERROR]Main client listener creation error (FIFO)\n");
-		fprintf(stderr, "[ERROR]Main client listener creation error (FIFO)\n");
+		print_info("[ERROR]Main client listener creation error (FIFO)\n");
 		exit(0);
 	}
 
@@ -429,7 +467,6 @@ void *clientMessageReciever(void *data)
 			while (getUserNodeByUsername(newUser->username) != NULL)
 			{
 				wasRepeated = true;
-				printf("Dupped name\n");
 
 				// add number to username if dupped
 				char *underline = &newUser->username[strlen(newUser->username)];
@@ -438,7 +475,7 @@ void *clientMessageReciever(void *data)
 				if (strncmp(underline, "_", 1) == 0)
 				{ //if it has an underline
 					sprintf(underline, "_%d", currentNumber + 1);
-					printf("New number : %d\n", currentNumber + 1);
+					wprintw(cfg.win.info_win, "New number : %d\n", currentNumber + 1);
 				}
 				else
 				{
@@ -446,16 +483,15 @@ void *clientMessageReciever(void *data)
 				}
 			}
 
-			printf("[INFO]New Client; pid : %d , Username : %s\n", command->senderPid, newUser->username);
+			wprintw(cfg.win.info_win, "[INFO]New Client; pid : %d , Username : %s\n", command->senderPid, newUser->username);
 
 			int fd = open(info->pathToFifo, O_RDWR);
 			if (fd == -1)
 			{
-				fprintf(stderr, "[ERROR]Error opening user fifo : Descarting User\n");
+				print_info("[ERROR]Error opening user fifo : Descarting User\n");
 			}
 			else
 			{
-				fprintf(stderr, "[INFO]Opened client fifo\n");
 				newUser->fifo = fd;
 				LinkedList_append(&cfg.users, newUser);
 
@@ -478,14 +514,15 @@ void *clientMessageReciever(void *data)
 			User *user = getUser(command->senderPid);
 			Message *message = (Message *)buffer;
 			int allowed = 1;
-			printf("test 0\n");
 			if (cfg.filter)
 			{
 				int badWordsCount = verifyBadWords(message);
 				if (badWordsCount > cfg.maxbadWords)
 				{
 					allowed = 0;
-					fprintf(stderr, "[INFO]Message Descarded, user : '%s', bad words: %d\n", user->username, badWordsCount);
+					char temp[128];
+					sprintf(temp, "[INFO]Message Descarded, user : '%s', bad words: %d\n", user->username, badWordsCount);
+					print_info(temp);
 					sendToClient(user, BAD_MESSAGE, NULL, 0);
 					break;
 				}
@@ -496,8 +533,6 @@ void *clientMessageReciever(void *data)
 				memcpy(realMessage, message, sizeof(Message));
 				realMessage->id = ++cfg.msgId;
 				realMessage->duration = MESSAGE_DURATION;
-
-				printf("test 1\n");
 
 				LinkedList_append(&cfg.msgs, realMessage);
 				Node *currTopic = cfg.topics.head;
@@ -529,23 +564,23 @@ void *clientMessageReciever(void *data)
 				notification.id = realMessage->id;
 				strncpy(notification.topic, realMessage->topic, TOPIC_L);
 				Buffer buffer = prepareBuffer(MESSAGE_NOTIFICATION, &notification, sizeof(MessageNotification));
-				printf("test 2\n");
 				Node *currUserNode = cfg.users.head;
 				while (currUserNode != NULL)
 				{
-					printf("test 3\n");
 					User *currUser = (User *)currUserNode->data;
-					printf("test 3 after\n");
 					// If user is subscribed send notification
 					if (getUserTopicNode(currUser, realMessage->topic) != NULL)
 					{
-						printf("test send buffer to . -> %s\n", currUser->username);
+						char temp[128];
+						sprintf(temp, "test send buffer to . -> %s\n", currUser->username);
+						print_info(temp);
 						sendBufferToClient(currUser, buffer);
 					}
 					currUserNode = currUserNode->next;
 				}
-
-				fprintf(stderr, "[INFO]New Message , user : '%s', id : '%d', title :'%s'\n", realMessage->username, realMessage->id, realMessage->title);
+				char temp[512];
+				sprintf("[INFO]New Message , user : '%s', id : '%d', title :'%s'\n", realMessage->username, realMessage->id, realMessage->title);
+				print_info(temp);
 			}
 			lock_all(false);
 			break;
@@ -574,7 +609,9 @@ void *clientMessageReciever(void *data)
 				if (userTopic == NULL)
 				{
 					LinkedList_append(&user->topics, topicNode->data);
-					fprintf(stderr, "[INFO]User \"%s\" subscribed to topic \"%s\"\n", user->username, topic);
+					char temp[256];
+					sprintf(temp, "[INFO]User \"%s\" subscribed to topic \"%s\"\n", user->username, topic);
+					print_info(temp);
 					sendToClient(user, SUBSCRIBED_TO_TOPIC, NULL, 0);
 				}
 				else
@@ -600,7 +637,9 @@ void *clientMessageReciever(void *data)
 
 			if (deleteUserTopic(user, topic) == true)
 			{
-				fprintf(stderr, "User \"%s\" unsubscribed to topic \"%s\"\n", user->username, topic);
+				char temp[128];
+				sprintf(temp, "User \"%s\" unsubscribed to topic \"%s\"\n", user->username, topic);
+				print_info(temp);
 				sendToClient(user, UNSUBSCRIBE_TOPIC, NULL, 0);
 			}
 			else
@@ -616,9 +655,9 @@ void *clientMessageReciever(void *data)
 			lock_topics(true);
 			int topicsAmount = LinkedList_getSize(&cfg.topics);
 			int totalBufferSize = sizeof(int) + topicsAmount * TOPIC_L;
-			void *ptr = malloc(totalBufferSize);
+			void *ptr = calloc(totalBufferSize, 1);
+			memcpy(ptr, &topicsAmount, sizeof(int)); // amount of topics
 			void *temp = ptr + sizeof(int);
-
 			Node *curr = cfg.topics.head;
 			for (int i = 0; i < topicsAmount && curr != NULL; i++)
 			{
@@ -646,7 +685,7 @@ void *clientMessageReciever(void *data)
 
 		default:
 		{
-			printf("Not Recognized Command\n");
+			print_info("Not Recognized/Implemented Command\n");
 			break;
 		}
 		}
@@ -665,7 +704,9 @@ void *checkAllClientsState(void *data)
 			User *user = (User *)curr->data;
 			if (user->beat == false)
 			{
-				printf("User disconnected : %s\n", user->username);
+				char temp[512];
+				sprintf(temp, "User disconnected : %s\n", user->username);
+				print_info(temp);
 				userLeft(curr);
 			}
 			user->beat = false;
@@ -721,7 +762,7 @@ int verifyBadWords(Message *message)
 
 void shutdown(int signal)
 {
-	printf("Exiting\n");
+	print_info("Exiting\n");
 	unlink(LISTENER_PATH);
 	Node *curr = cfg.users.head;
 	while (curr != NULL)
@@ -730,6 +771,7 @@ void shutdown(int signal)
 		sendToClient(currUser, SERVER_SHUTDOWN, NULL, 0);
 		curr = curr->next;
 	}
+	endwin();
 	exit(0);
 }
 
@@ -782,42 +824,42 @@ void sendBufferToClient(User *user, Buffer buffer)
 void printTopics(Node *head)
 {
 	Node *curr = head;
-	printf("Topics : %d total\n#Topic -> users subscribed\n", LinkedList_getSize(&cfg.topics));
+	wprintw(cfg.win.output_win, "Topics : %d total\n#Topic -> users subscribed\n", LinkedList_getSize(&cfg.topics));
 
 	while (curr != NULL)
 	{ //TODO
 		char *topic = (char *)curr->data;
-		printf("\t%s ->", topic);
+		wprintw(cfg.win.output_win, "\t%s ->", topic);
 
 		Node *user_node = cfg.users.head;
 		while (user_node != NULL)
 		{
 			User *user = (User *)user_node->data;
 			if (getUserTopicNode(user, topic) != NULL)
-				printf(" %s", user->username);
+				wprintw(cfg.win.output_win, " %s", user->username);
 			user_node = user_node->next;
 		}
-		printf("\n");
+		wprintw(cfg.win.output_win, "\n");
 		curr = curr->next;
 	}
 }
 void printUsers(Node *head)
 {
 	Node *curr = head;
-	printf("Users online : %d total\n\t#Name -> subscriptions\n", LinkedList_getSize(&cfg.users));
+	wprintw(cfg.win.output_win, "Users online : %d total\n\t#Name -> subscriptions\n", LinkedList_getSize(&cfg.users));
 
 	while (curr != NULL)
 	{
 		User *user = (User *)curr->data;
-		printf("\t%s ->", user->username);
+		wprintw(cfg.win.output_win, "\t%s ->", user->username);
 
 		Node *currTopic = user->topics.head;
 		while (currTopic != NULL)
 		{
-			printf(" %s", (char *)currTopic->data);
+			wprintw(cfg.win.output_win, " %s", (char *)currTopic->data);
 			currTopic = currTopic->next;
 		}
-		printf("\n");
+		wprintw(cfg.win.output_win, "\n");
 
 		curr = curr->next;
 	}
@@ -825,12 +867,12 @@ void printUsers(Node *head)
 void printMsgs(Node *head)
 {
 	Node *curr = head;
-	printf("Msgs on Memory : %d total\n", LinkedList_getSize(&cfg.msgs));
+	wprintw(cfg.win.output_win, "Msgs on Memory : %d total\n", LinkedList_getSize(&cfg.msgs));
 
 	while (curr != NULL)
 	{
 		Message *currMessage = (Message *)curr->data;
-		printf("Id : %d,\n\tTitle : %s,\n\tUsername : %s,\n\tTopic : %s\n", currMessage->id, currMessage->title, currMessage->username, currMessage->topic);
+		wprintw(cfg.win.output_win, "Id : %d,\n\tTitle : %s,\n\tUsername : %s,\n\tTopic : %s\n", currMessage->id, currMessage->title, currMessage->username, currMessage->topic);
 		curr = curr->next;
 	}
 }
@@ -936,6 +978,7 @@ int deleteUserTopic(User *user, char *topic)
 
 	LinkedList_detachNode(&user->topics, userTopicNode);
 	free(userTopicNode);
+	sendToClient(user, TOPIC_DELETED, NULL, 0);
 	return true;
 }
 
@@ -947,30 +990,58 @@ void unlock_m(pthread_mutex_t *mutex)
 {
 	pthread_mutex_unlock(mutex);
 }
-void lock_users(int bool)
+void lock_users(int value)
 {
-	if (bool == true)
+	if (value == true)
 		lock_m(&cfg.mutex.usersLock);
 	else
 		unlock_m(&cfg.mutex.usersLock);
 }
-void lock_msgs(int bool)
+void lock_msgs(int value)
 {
-	if (bool == true)
+	if (value == true)
 		lock_m(&cfg.mutex.msgsLock);
 	else
 		unlock_m(&cfg.mutex.msgsLock);
 }
-void lock_topics(int bool)
+void lock_topics(int value)
 {
-	if (bool == true)
+	if (value == true)
 		lock_m(&cfg.mutex.topicsLock);
 	else
 		unlock_m(&cfg.mutex.topicsLock);
 }
-void lock_all(int bool)
+void lock_all(int value)
 {
-	lock_users(bool);
-	lock_msgs(bool);
-	lock_topics(bool);
+	lock_users(value);
+	lock_msgs(value);
+	lock_topics(value);
+}
+
+void print_info(char *str)
+{
+	wprintw(cfg.win.info_win, "%s", str);
+	wrefresh(cfg.win.info_win);
+	//TODO save on log
+}
+void print_out(char *str)
+{
+	wprintw(cfg.win.output_win, "%s", str);
+	wrefresh(cfg.win.output_win);
+}
+
+void refresh_all_windows() // TODO fix refresh
+{
+	//wclear(stdscr);
+
+	/*box(cfg.win.border_info_win, 0, 0);
+	box(cfg.win.border_input_win, 0, 0);
+	box(cfg.win.border_output_win, 0, 0);
+	wrefresh(cfg.win.border_info_win);
+	wrefresh(cfg.win.border_input_win);
+	wrefresh(cfg.win.border_output_win);*/
+
+	wrefresh(cfg.win.info_win);
+	wrefresh(cfg.win.input_win);
+	wrefresh(cfg.win.output_win);
 }

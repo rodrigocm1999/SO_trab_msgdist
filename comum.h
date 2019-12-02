@@ -8,12 +8,13 @@
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include <curses.h>
 #include "utils.h"
 
 #define true 1
 #define false 0
 
-#define MESSAGE_DURATION 5 // in seconds
+#define MESSAGE_DURATION 300 // in seconds
 
 #define LISTENER_PATH "/tmp/msgdist_listenerFifo"
 #define USERNAME_L 32
@@ -37,6 +38,7 @@
 #define SUBSCRIBED_TO_TOPIC 34
 #define ALREADY_SUBSCRIBED 35
 #define NON_EXISTENT_TOPIC 36
+#define TOPIC_DELETED 37
 #define HEARTBEAT_ISALIVE 40
 
 

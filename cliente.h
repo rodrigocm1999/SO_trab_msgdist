@@ -1,5 +1,4 @@
 #include "comum.h"
-#include <ncurses.h>
 #include <locale.h>
 #include "ncurses-menu.h"
 

@@ -9,7 +9,7 @@ cliente.o : cliente.c
 	gcc cliente.c -c
 
 gestor : gestor.o utils.o comum.o
-	gcc gestor.o utils.o comum.o -o gestor -pthread
+	gcc gestor.o utils.o comum.o -o gestor -pthread -lcurses
 
 gestor.o : gestor.c
 	gcc gestor.c -c

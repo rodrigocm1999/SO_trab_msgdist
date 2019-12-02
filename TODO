@@ -2,4 +2,7 @@
 list  client subscriptions
 
 
-fix help ??
+interface client
+interface server
+
+auto adjust interface on terminal redimension
