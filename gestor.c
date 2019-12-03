@@ -824,7 +824,7 @@ void sendBufferToClient(User *user, Buffer buffer)
 void printTopics(Node *head)
 {
 	Node *curr = head;
-	wprintw(cfg.win.output_win, "Topics : %d total\n#Topic -> users subscribed\n", LinkedList_getSize(&cfg.topics));
+	wprintw(cfg.win.output_win, "Topics : %d total\n\t#Topic -> users subscribed\n", LinkedList_getSize(&cfg.topics));
 
 	while (curr != NULL)
 	{ //TODO
