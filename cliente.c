@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
 	int menu_ret = 1, menu_ret2 = 1;
 	char alts[][100] = {
-		 {" Write Message"}, /* Every menu needs an */
+		 {"Write Message"}, /* Every menu needs an */
 		 {"Info needed"},
 		 {"Subscribe to Topic"},
 		 {"Unsubscribe from Topic"}, /* array like these to */
@@ -100,15 +100,22 @@ int main(int argc, char *argv[])
 	curs_set(0);
 
 	int choice;
+	
 
 	while (menu_ret != 5)
 	{
 
-		menu_ret = print_menu(2, 5, 5, 15,
+		menu_ret = print_menu(0, 0, 5, 15,
 									 cfg.username, alts, menu_ret);
 
 		if (menu_ret == 1) /* This is just an example program. */
 		{						 /* You can't start an actual game.  */
+			erase();
+			refresh();
+			WINDOW* newMessageWindow = newwin(20,70,1,1);
+			box(newMessageWindow,0,0);
+			wrefresh(newMessageWindow);
+
 
 			Message message;
 			strcpy(message.username, cfg.username);
@@ -116,29 +123,29 @@ int main(int argc, char *argv[])
 			char msg[1000];
 
 			echo();
-			mvprintw(6, 27, "Topico da menssagem: ");
-			refresh();
+			mvprintw(2, 2, "Topico da menssagem: ");
+			//refresh();
 			scanw("%s", message.topic);
-
-			mvprintw(8, 27, "Titulo da menssagem: ");
+			
+			mvprintw(5, 2, "Titulo da menssagem: ");
 			refresh();
 			scanw("%s", message.title);
 
 			//Message newMsg(username,topic,titulo,msg);
 
-			mvprintw(10, 27, "Mensagem: ");
+			mvprintw(8, 2, "Mensagem: ");
 			refresh();
 			scanw("%s", message.body);
 
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
-			mvprintw(12, 27, "Mensagem enviada\n");
+			mvprintw(19, 50, "Mensagem enviada");
 			getch();
 		}
 		if (menu_ret == 2) /* If you select load game, a new    */
 		{						 /* menu will show up without erasing */
 			do					 /* the main menu. */
 			{
-				menu_ret2 = print_menu(6, 34, 4, 15,
+				menu_ret2 = print_menu(3, 26, 4, 15,
 											  "SELECT SLOT", alts2, 1);
 
 				if (menu_ret2 == 1)
@@ -156,6 +163,7 @@ int main(int argc, char *argv[])
 
 					// Read Message in Topic
 				}
+				refresh();
 			} while (menu_ret2 != 4);
 		}
 		if (menu_ret == 3)
@@ -163,7 +171,7 @@ int main(int argc, char *argv[])
 			//Subscribe to Topic
 			char buffer[TOPIC_L];
 
-			mvprintw(10, 27, "Topic Name: ");
+			mvprintw(7, 26, "Topic Name: ");
 			refresh();
 			scanw("%s", buffer);
 
@@ -174,7 +182,7 @@ int main(int argc, char *argv[])
 			//Unsubscribe to Topic
 			char buffer[TOPIC_L];
 
-			mvprintw(10, 27, "Topic Name: ");
+			mvprintw(7, 26, "Topic Name: ");
 			refresh();
 			scanw("%s", buffer);
 
