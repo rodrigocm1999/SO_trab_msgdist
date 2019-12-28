@@ -7,6 +7,10 @@
 #define DEFAULTWORDSNOT "./badwords.txt"
 #define MAXNOT "MAXNOT"
 #define DEFAULTMAXNOT 2
+#define MAXMSG "MAXMSG"
+#define DEFAULTMAXMSG 50
+
+
 
 #define MSGEND "##MSGEND##\n"
 #define MSGEND_L 11
@@ -27,6 +31,11 @@ struct windows
    WINDOW *border_output_win;
    WINDOW *border_input_win;
 };
+struct threads{
+   pthread_t clientMessageRecieverThread;
+   pthread_t checkAllClientsStateThread;
+   pthread_t checkMessageTimeoutThread;
+};
 
 typedef struct ServerConfig
 {
@@ -36,10 +45,12 @@ typedef struct ServerConfig
    int filter;
    unsigned int maxbadWords;
    unsigned int msgId;
+   int max_messages;
    LinkedList msgs;
    LinkedList topics;
    LinkedList users;
    struct listsMutex mutex;
+   struct threads threads;
 } ServerConfig;
 
 int verifyBadWords(Message *message);

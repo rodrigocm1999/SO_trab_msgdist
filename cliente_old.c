@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 
 	int menu_ret = 1, menu_ret2 = 1;
 	char alts[][100] = {
-		 {"Write Message"}, /* Every menu needs an */
+		 {" Write Message"}, /* Every menu needs an */
 		 {"Info needed"},
 		 {"Subscribe to Topic"},
 		 {"Unsubscribe from Topic"}, /* array like these to */
@@ -100,22 +100,15 @@ int main(int argc, char *argv[])
 	curs_set(0);
 
 	int choice;
-	
 
 	while (menu_ret != 5)
 	{
 
-		menu_ret = print_menu(0, 0, 5, 15,
+		menu_ret = print_menu(2, 5, 5, 15,
 									 cfg.username, alts, menu_ret);
 
 		if (menu_ret == 1) /* This is just an example program. */
 		{						 /* You can't start an actual game.  */
-			erase();
-			refresh();
-			WINDOW* newMessageWindow = newwin(20,70,1,1);
-			box(newMessageWindow,0,0);
-			wrefresh(newMessageWindow);
-
 
 			Message message;
 			strcpy(message.username, cfg.username);
@@ -123,68 +116,46 @@ int main(int argc, char *argv[])
 			char msg[1000];
 
 			echo();
-			mvprintw(2, 2, "Topico da menssagem: ");
-			//refresh();
+			mvprintw(6, 27, "Topico da menssagem: ");
+			refresh();
 			scanw("%s", message.topic);
-			
-			mvprintw(5, 2, "Titulo da menssagem: ");
+
+			mvprintw(8, 27, "Titulo da menssagem: ");
 			refresh();
 			scanw("%s", message.title);
 
 			//Message newMsg(username,topic,titulo,msg);
 
-			mvprintw(8, 2, "Mensagem: ");
+			mvprintw(10, 27, "Mensagem: ");
 			refresh();
 			scanw("%s", message.body);
 
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
-			mvprintw(19, 50, "Mensagem enviada");
+			mvprintw(12, 27, "Mensagem enviada\n");
 			getch();
 		}
 		if (menu_ret == 2) /* If you select load game, a new    */
 		{						 /* menu will show up without erasing */
 			do					 /* the main menu. */
 			{
-				menu_ret2 = print_menu(3, 26, 4, 15,
-											  "SELECT", alts2, 1);
+				menu_ret2 = print_menu(6, 34, 4, 15,
+											  "SELECT SLOT", alts2, 1);
 
 				if (menu_ret2 == 1)
 				{
 					// List Topics
-					erase();
-					refresh();
-					
-					cfg.win.topicsWindow = newwin(20,70,1,1);
-					box(cfg.win.topicsWindow,0,0);
-					wrefresh(cfg.win.topicsWindow);
-
 					sendToServer(GET_TOPICS, NULL, 0);
-
-					cfg.win.borderTopicsWindow = newwin(20,70,1,1);
-					box(cfg.win.borderTopicsWindow,0,0);
-					wrefresh(cfg.win.borderTopicsWindow);
-					refresh();
-					getch();
-					wclear(cfg.win.topicsWindow);
-					erase();
 				}
 				if (menu_ret2 == 2)
 				{
-					erase();
-					refresh();
-					WINDOW *titlesFromTopicWindow = newwin(20,70,1,1);
-					box(titlesFromTopicWindow,0,0);
-					wrefresh(titlesFromTopicWindow);
 
-					getch();
 					// List Titles in Topic
 				}
 				if (menu_ret2 == 3)
 				{
-					WINDOW * messageFromTopicWindow = newwin(20,70,1,1);
+
 					// Read Message in Topic
 				}
-				refresh();
 			} while (menu_ret2 != 4);
 		}
 		if (menu_ret == 3)
@@ -192,7 +163,7 @@ int main(int argc, char *argv[])
 			//Subscribe to Topic
 			char buffer[TOPIC_L];
 
-			mvprintw(7, 26, "Topic Name: ");
+			mvprintw(10, 27, "Topic Name: ");
 			refresh();
 			scanw("%s", buffer);
 
@@ -203,7 +174,7 @@ int main(int argc, char *argv[])
 			//Unsubscribe to Topic
 			char buffer[TOPIC_L];
 
-			mvprintw(7, 26, "Topic Name: ");
+			mvprintw(10, 27, "Topic Name: ");
 			refresh();
 			scanw("%s", buffer);
 
@@ -301,26 +272,7 @@ void *fifoListener(void *data)
 			printf("Message discarded\n");
 			break;
 		}
-		case GET_TOPICS:
-		{
-			int * n_topicos = buffer;
-			char *topicos;
-			buffer = buffer + sizeof(int);
-			
-			topicos = buffer;
 
-			//char str[TOPIC_L*(*n_topicos)];
-			for(int i = 0;i< * n_topicos;i++){
-				//for(int j=0; j < TOPIC_L;j++){
-					wprintw(cfg.win.topicsWindow,"%s\n", &topicos[i * TOPIC_L]);
-					//strncat(str, &topicos[i*TOPIC_L+j], 1);
-				//}
-				//strcat(str," \n");
-			}
-			wrefresh(cfg.win.topicsWindow);
-			//print_infoWindow(str);
-			break;
-		}
 		default:
 			printf("Not Recognized Command\n");
 			break;
@@ -372,9 +324,4 @@ int sendToServer(int cmd, void *other, size_t size)
 	int written = write(cfg.server, buffer.ptr, buffer.size);
 	free(buffer.ptr);
 	return written;
-}
-
-void print_infoWindow(char *str){
-	wprintw(cfg.win.topicsWindow,"%s",str);
-	wrefresh(cfg.win.topicsWindow);
 }

@@ -5,6 +5,37 @@ ServerConfig cfg;
 
 int main(int argc, char *argv[])
 {
+	//check for arguments and already running server
+	{
+		int checkServerRunning = 1;
+		int res;
+		while ((res = getopt(argc, argv, "f")) != -1)
+		{
+			switch (res)
+			{
+			case 'f':
+				print_info("[INFO] Using force start option\n");
+				if (isServerRunning())
+				{
+					print_info("[INFO] Deleting old listener FIFO\n");
+					unlink(LISTENER_PATH);
+				}
+				checkServerRunning = 0;
+				break;
+
+			default:
+				print_info("Unsuported Option\n-f = force start (used after crash or kill)\n");
+				break;
+			}
+		}
+		//check for already running server
+		if (checkServerRunning && isServerRunning())
+		{
+			print_info("Program already running\nExiting\n");
+			exit(0);
+		}
+	}
+
 	// Variable Initialization
 	{
 		cfg.msgId = 0;
@@ -12,6 +43,14 @@ int main(int argc, char *argv[])
 		cfg.users.head = NULL;
 		cfg.topics.head = NULL;
 		cfg.msgs.head = NULL;
+
+		char *temp = getenv(MAXMSG);
+		if (temp != NULL)
+			cfg.max_messages = atoi(temp);
+		else
+			cfg.max_messages = DEFAULTMAXMSG;
+		
+
 		int error = 0;
 		error |= pthread_mutex_init(&cfg.mutex.msgsLock, NULL);
 		error |= pthread_mutex_init(&cfg.mutex.topicsLock, NULL);
@@ -45,36 +84,6 @@ int main(int argc, char *argv[])
 		scrollok(cfg.win.info_win, true);
 		scrollok(cfg.win.output_win, true);
 	}
-	//check for arguments and already running server
-	{
-		int checkServerRunning = 1;
-		int res;
-		while ((res = getopt(argc, argv, "f")) != -1)
-		{
-			switch (res)
-			{
-			case 'f':
-				print_info("[INFO] Using force start option\n");
-				if (isServerRunning())
-				{
-					print_info("[INFO] Deleting old listener FIFO\n");
-					unlink(LISTENER_PATH);
-				}
-				checkServerRunning = 0;
-				break;
-
-			default:
-				print_info("Unsuported Option\n-f = force start (used after crash or kill)\n");
-				break;
-			}
-		}
-		//check for already running server
-		if (checkServerRunning && isServerRunning())
-		{
-			print_info("Program already running\nExiting\n");
-			exit(0);
-		}
-	}
 
 	//Start words verifier
 	{
@@ -85,9 +94,7 @@ int main(int argc, char *argv[])
 
 		char *badWordsFile = getenv(WORDSNOT);
 		if (badWordsFile == NULL)
-		{
 			badWordsFile = DEFAULTWORDSNOT;
-		}
 
 		char temp[64];
 		sprintf(temp, "[INFO] WORDSNOT = %s\n", badWordsFile);
@@ -126,13 +133,10 @@ int main(int argc, char *argv[])
 	{
 		char *temp = getenv(MAXNOT);
 		if (temp != NULL)
-		{
 			cfg.maxbadWords = atoi(temp);
-		}
 		else
-		{
 			cfg.maxbadWords = DEFAULTMAXNOT;
-		}
+		
 		char temp2[64];
 		sprintf(temp2, "[INFO] MAXNOT = %d\n", cfg.maxbadWords);
 		print_info(temp2);
@@ -140,12 +144,9 @@ int main(int argc, char *argv[])
 
 	// Start listener for messages
 	{
-		pthread_t listenerThread;
-		pthread_create(&listenerThread, NULL, clientMessageReciever, (void *)NULL);
-		pthread_t checkClientsThread;
-		pthread_create(&listenerThread, NULL, checkAllClientsState, (void *)NULL);
-		pthread_t checkMessageTimeoutThread;
-		pthread_create(&listenerThread, NULL, checkMessageTimeout, (void *)NULL);
+		pthread_create(&cfg.threads.clientMessageRecieverThread, NULL, clientMessageReciever, (void *)NULL);
+		pthread_create(&cfg.threads.checkAllClientsStateThread, NULL, checkAllClientsState, (void *)NULL);
+		pthread_create(&cfg.threads.checkMessageTimeoutThread, NULL, checkMessageTimeout, (void *)NULL);
 	}
 
 	// Change Default Signal Effect
@@ -483,7 +484,7 @@ void *clientMessageReciever(void *data)
 				}
 			}
 
-			wprintw(cfg.win.info_win, "[INFO]New Client; pid : %d , Username : %s\n", command->senderPid, newUser->username);
+			wprintw(cfg.win.info_win, "[INFO] New Client; pid : %d , Username : %s\n", command->senderPid, newUser->username);
 
 			int fd = open(info->pathToFifo, O_RDWR);
 			if (fd == -1)
@@ -513,6 +514,13 @@ void *clientMessageReciever(void *data)
 			lock_all(true);
 			User *user = getUser(command->senderPid);
 			Message *message = (Message *)buffer;
+
+			int n_messages = LinkedList_getSize(&cfg.msgs);
+			if(n_messages > cfg.max_messages){
+				sendToClient(user, MESSAGES_LIMIT, NULL, 0);
+				break;
+			}
+
 			int allowed = 1;
 			if (cfg.filter)
 			{
@@ -655,13 +663,19 @@ void *clientMessageReciever(void *data)
 			lock_topics(true);
 			int topicsAmount = LinkedList_getSize(&cfg.topics);
 			int totalBufferSize = sizeof(int) + topicsAmount * TOPIC_L;
-			void *ptr = calloc(totalBufferSize, 1);
-			memcpy(ptr, &topicsAmount, sizeof(int)); // amount of topics
-			void *temp = ptr + sizeof(int);
+			void *ptr = malloc(totalBufferSize);
+			{
+				//topics amount
+				int *temp = ptr;
+				*temp = topicsAmount;
+			}
+			//memcpy(ptr, &topicsAmount, sizeof(int)); // amount of topics
+			char *temp = ptr + sizeof(int);
+
 			Node *curr = cfg.topics.head;
 			for (int i = 0; i < topicsAmount && curr != NULL; i++)
 			{
-				void *pos = temp + i * TOPIC_L;
+				char *pos = temp + i * TOPIC_L;
 				memcpy(pos, curr->data, TOPIC_L);
 				curr = curr->next;
 			}
@@ -671,6 +685,8 @@ void *clientMessageReciever(void *data)
 			lock_users(false);
 			sendToClient(user, GET_TOPICS, ptr, totalBufferSize);
 			lock_topics(false);
+
+			free(ptr);
 			break;
 		}
 
@@ -689,6 +705,8 @@ void *clientMessageReciever(void *data)
 			break;
 		}
 		}
+
+		wrefresh(cfg.win.info_win);
 	}
 }
 
@@ -772,6 +790,13 @@ void shutdown(int signal)
 		curr = curr->next;
 	}
 	endwin();
+
+	pthread_cancel(cfg.threads.checkAllClientsStateThread);
+	pthread_join(cfg.threads.checkAllClientsStateThread, NULL);
+	pthread_cancel(cfg.threads.checkMessageTimeoutThread);
+	pthread_join(cfg.threads.checkMessageTimeoutThread, NULL);
+	pthread_cancel(cfg.threads.clientMessageRecieverThread);
+	pthread_join(cfg.threads.clientMessageRecieverThread, NULL);
 	exit(0);
 }
 
@@ -1022,6 +1047,7 @@ void print_info(char *str)
 {
 	wprintw(cfg.win.info_win, "%s", str);
 	wrefresh(cfg.win.info_win);
+	fprintf(stderr,"%s",str);
 	//TODO save on log
 }
 void print_out(char *str)
