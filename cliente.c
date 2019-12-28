@@ -145,8 +145,8 @@ int main(int argc, char *argv[])
 		{						 /* menu will show up without erasing */
 			do					 /* the main menu. */
 			{
-				menu_ret2 = print_menu(3, 26, 4, 15,
-											  "SELECT", alts2, 1);
+				menu_ret2 = print_menu(3, 26, 4, 15,"SELECT", alts2, 1);
+
 
 				if (menu_ret2 == 1)
 				{
