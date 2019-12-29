@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <curses.h>
+#include <time.h>
 #include "utils.h"
 
 #define true 1
@@ -41,6 +42,9 @@
 #define NON_EXISTENT_TOPIC 36
 #define TOPIC_DELETED 37
 #define HEARTBEAT_ISALIVE 40
+#define LIST_TOPIC_MESSAGES 50
+#define GET_MESSAGE 51
+#define MESSAGE_NOT_FOUND 52
 
 
 

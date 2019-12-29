@@ -46,10 +46,13 @@ int main(int argc, char *argv[])
 
 		char *temp = getenv(MAXMSG);
 		if (temp != NULL)
+		{
 			cfg.max_messages = atoi(temp);
+			if (cfg.max_messages == 0 && strcmp(temp, "0") != 0)
+				print_info("[ERROR] Invalid MAXMSG. Set to 0\n");
+		}
 		else
 			cfg.max_messages = DEFAULTMAXMSG;
-		
 
 		int error = 0;
 		error |= pthread_mutex_init(&cfg.mutex.msgsLock, NULL);
@@ -63,6 +66,7 @@ int main(int argc, char *argv[])
 
 		// Start ncurses windows
 		initscr();
+		nonl(); intrflush(stdscr, FALSE); keypad(stdscr, TRUE);
 		const int box_width = 100;
 		int box_sizes[] = {14, 14, 3};
 		WINDOW **window_pointers = &cfg.win.info_win; // order:  info_win, output_win, input_win
@@ -116,7 +120,7 @@ int main(int argc, char *argv[])
 			//start verifier on child process
 			char ver[] = "verificador";
 			execl(ver, ver, badWordsFile, (char *)NULL);
-			print_info("[ERROR] Bad Word Verifier Not started.\n");
+			print_info("[ERROR] Bad Word Verifier Not started. Probable cause : Invalid path\n");
 			exit(0);
 			//Exec gave error
 		}
@@ -133,10 +137,14 @@ int main(int argc, char *argv[])
 	{
 		char *temp = getenv(MAXNOT);
 		if (temp != NULL)
+		{
 			cfg.maxbadWords = atoi(temp);
+			if (cfg.maxbadWords == 0 && strcmp(temp, "0") != 0)
+				print_info("[ERROR] Invalid MAXNOT. Set to 0\n");
+		}
 		else
 			cfg.maxbadWords = DEFAULTMAXNOT;
-		
+
 		char temp2[64];
 		sprintf(temp2, "[INFO] MAXNOT = %d\n", cfg.maxbadWords);
 		print_info(temp2);
@@ -373,6 +381,10 @@ int main(int argc, char *argv[])
 				while (node != NULL)
 				{
 					wprintw(cfg.win.output_win, " %s", (char *)node->data);
+					char temp[128];
+					sprintf(temp, "[INFO] Removed topic (prune) -> %s", (char *)node->data);
+					print_info(temp);
+
 					Node *node_to_delete = node;
 					node = node->next;
 					// remove topic from memory
@@ -484,7 +496,9 @@ void *clientMessageReciever(void *data)
 				}
 			}
 
-			wprintw(cfg.win.info_win, "[INFO] New Client; pid : %d , Username : %s\n", command->senderPid, newUser->username);
+			char temp[128];
+			sprintf(temp,"[INFO] New Client -> pid : %d, Username : %s\n", command->senderPid, newUser->username);
+			print_info(temp);
 
 			int fd = open(info->pathToFifo, O_RDWR);
 			if (fd == -1)
@@ -516,7 +530,8 @@ void *clientMessageReciever(void *data)
 			Message *message = (Message *)buffer;
 
 			int n_messages = LinkedList_getSize(&cfg.msgs);
-			if(n_messages > cfg.max_messages){
+			if (n_messages > cfg.max_messages)
+			{
 				sendToClient(user, MESSAGES_LIMIT, NULL, 0);
 				break;
 			}
@@ -529,7 +544,7 @@ void *clientMessageReciever(void *data)
 				{
 					allowed = 0;
 					char temp[128];
-					sprintf(temp, "[INFO]Message Descarded, user : '%s', bad words: %d\n", user->username, badWordsCount);
+					sprintf(temp, "[INFO] Message Descarded, user : '%s', bad words: %d\n", user->username, badWordsCount);
 					print_info(temp);
 					sendToClient(user, BAD_MESSAGE, NULL, 0);
 					break;
@@ -562,9 +577,14 @@ void *clientMessageReciever(void *data)
 				//add new topic if doesn't exist
 				if (found == 0)
 				{
+					//Create new Topic
 					char *topic = malloc(sizeof(char) * TOPIC_L);
 					strcpy(topic, realMessage->topic);
 					LinkedList_append(&cfg.topics, topic);
+
+					char temp[128];
+					sprintf(temp, "[INFO] New topic -> %s\n", topic);
+					print_info(temp);
 				}
 
 				// Send Notification to all subscribed clients
@@ -578,16 +598,11 @@ void *clientMessageReciever(void *data)
 					User *currUser = (User *)currUserNode->data;
 					// If user is subscribed send notification
 					if (getUserTopicNode(currUser, realMessage->topic) != NULL)
-					{
-						char temp[128];
-						sprintf(temp, "test send buffer to . -> %s\n", currUser->username);
-						print_info(temp);
 						sendBufferToClient(currUser, buffer);
-					}
 					currUserNode = currUserNode->next;
 				}
 				char temp[512];
-				sprintf(temp, "[INFO]New Message , user : '%s', id : '%d', title :'%s'\n", realMessage->username, realMessage->id, realMessage->title);
+				sprintf(temp, "[INFO] New Message -> id : '%d', user : '%s', topic: '%s', title :'%s'\n", realMessage->id, realMessage->username, realMessage->topic, realMessage->title);
 				print_info(temp);
 			}
 			lock_all(false);
@@ -690,6 +705,26 @@ void *clientMessageReciever(void *data)
 			break;
 		}
 
+		case LIST_TOPIC_MESSAGES:
+		{
+
+		}
+
+		case GET_MESSAGE:
+		{
+			lock_msgs(true);
+			lock_users(true);
+			User *user = getUser(command->senderPid);
+			int *id = buffer;
+			Message *message = getMessageById(*id);
+			if(message == NULL){
+				sendToClient(user,MESSAGE_NOT_FOUND,NULL,0);
+			} else
+				sendToClient(user, GET_MESSAGE, message, sizeof(Message));
+			lock_msgs(false);
+			lock_users(false);
+		}
+
 		case HEARTBEAT_ISALIVE:
 		{
 			lock_users(true);
@@ -701,7 +736,7 @@ void *clientMessageReciever(void *data)
 
 		default:
 		{
-			print_info("Not Recognized/Implemented Command\n");
+			print_info("[ERROR] Not Recognized/Implemented Command\n");
 			break;
 		}
 		}
@@ -721,12 +756,7 @@ void *checkAllClientsState(void *data)
 		{
 			User *user = (User *)curr->data;
 			if (user->beat == false)
-			{
-				char temp[512];
-				sprintf(temp, "User disconnected : %s\n", user->username);
-				print_info(temp);
 				userLeft(curr);
-			}
 			user->beat = false;
 			curr = curr->next;
 		}
@@ -753,6 +783,10 @@ void *checkMessageTimeout(void *data)
 				LinkedList_detachNode(&cfg.msgs, curr);
 				free(curr->data);
 				free(curr);
+
+				char temp[256];
+				sprintf(temp, "[INFO] Message Timeout -> id : '%d'\n", message->id);
+				print_info(temp);
 			}
 			curr = next;
 		}
@@ -780,7 +814,7 @@ int verifyBadWords(Message *message)
 
 void shutdown(int signal)
 {
-	print_info("Exiting\n");
+	print_info("[INFO] Shuting Down\n");
 	unlink(LISTENER_PATH);
 	Node *curr = cfg.users.head;
 	while (curr != NULL)
@@ -813,6 +847,11 @@ void userLeft(Node *node)
 		free(currNode);
 		currNode = nextnode;
 	}
+
+	char temp[256];
+	sprintf(temp, "[INFO] User Left -> %s\n", user->username);
+	print_info(temp);
+
 	// 2º limpar o user
 	close(user->fifo);
 	free(user);
@@ -936,7 +975,8 @@ Node *getUserNode(pid_t pid)
 }
 User *getUser(pid_t pid)
 {
-	return (User *)getUserNode(pid)->data;
+	Node *node = getUserNode(pid);
+	return node == NULL ? NULL : (User *)node->data;
 }
 Node *getUserNodeByUsername(char *username)
 {
@@ -954,7 +994,8 @@ Node *getUserNodeByUsername(char *username)
 }
 User *getUserByUsername(char *username)
 {
-	return (User *)getUserNodeByUsername(username)->data;
+	Node *node = getUserNodeByUsername(username);
+	return node == NULL ? NULL : (User *)node->data;
 }
 Node *getTopicNode(char *topic)
 {
@@ -990,10 +1031,12 @@ Node *getMessageNodeById(int id)
 			return curr;
 		curr = curr->next;
 	}
+	return NULL;
 }
 Message *getMessageById(int id)
 {
-	return (Message *)getMessageNodeById(id)->data;
+	Node *node = getMessageNodeById(id);
+	return node == NULL ? NULL : (Message *)node->data;
 }
 int deleteUserTopic(User *user, char *topic)
 {
@@ -1045,29 +1088,33 @@ void lock_all(int value)
 
 void print_info(char *str)
 {
-	wprintw(cfg.win.info_win, "%s", str);
+	time_t rawtime;
+	struct tm *timeinfo;
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	char time_str[12];
+	sprintf(time_str, "[%.2d:%.2d:%.2d]:", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+
+	wprintw(cfg.win.info_win, "%s%s", time_str, str);
 	wrefresh(cfg.win.info_win);
-	fprintf(stderr,"%s",str);
-	//TODO save on log
+	fprintf(stderr, "%s%s", time_str, str);
 }
 void print_out(char *str)
 {
 	wprintw(cfg.win.output_win, "%s", str);
 	wrefresh(cfg.win.output_win);
 }
-
 void refresh_all_windows() // TODO fix refresh
 {
-	//wclear(stdscr);
-
-	/*box(cfg.win.border_info_win, 0, 0);
+	wclear(stdscr);
+	box(cfg.win.border_info_win, 0, 0);
 	box(cfg.win.border_input_win, 0, 0);
 	box(cfg.win.border_output_win, 0, 0);
-	wrefresh(cfg.win.border_info_win);
-	wrefresh(cfg.win.border_input_win);
-	wrefresh(cfg.win.border_output_win);*/
+	//wrefresh(cfg.win.border_info_win);
+	//wrefresh(cfg.win.border_input_win);
+	//wrefresh(cfg.win.border_output_win);
 
-	wrefresh(cfg.win.info_win);
-	wrefresh(cfg.win.input_win);
-	wrefresh(cfg.win.output_win);
+	//wrefresh(cfg.win.info_win);
+	//wrefresh(cfg.win.input_win);
+	//wrefresh(cfg.win.output_win);
 }

@@ -5,28 +5,15 @@ interface client
 
 auto adjust interface on terminal redimension
 
-change shutdown to wait for threads and not kill everything
-
 fix_client mesasage topic rwriting scanf doesnt get after space
-
-
-verificar cenas do enviroment
-
 
 # Cliente
    - Consultar a lista de títulos de mensagens de um determinado tópico.
    - Consultar uma mensagem de um tópico.
+   - Check everything cuz nothing works
+
 
  O utilizador indica o seu username ao programa cliente como argomento da linha de comandos.
 
  # Gestor
    - `MAXMSG` ->    Cliente -> avisar do maximo de msg.
-   
-   - Reporta de imediato no `stderr` todas as ações feitas que alteram a lista de mensagens ou tópicos, e as ações que alteram o conjunto de clientes/utilizadores. (Logs do que está a acontecer mandados para o `stderr`)
-   Exemplos:
-      - Mensagem recebida.
-      - Eliminação das mensagens publicadas quando as mesmas expiraram.
-      - Criação de novos tópicos e a eliminação de tópicos.
-      - Utilizador entrou.
-      - Cliente deixou de existir.
-      - Etc.
