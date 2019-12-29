@@ -66,7 +66,9 @@ int main(int argc, char *argv[])
 
 		// Start ncurses windows
 		initscr();
-		nonl(); intrflush(stdscr, FALSE); keypad(stdscr, TRUE);
+		nonl();
+		intrflush(stdscr, FALSE);
+		keypad(stdscr, TRUE);
 		const int box_width = 100;
 		int box_sizes[] = {14, 14, 3};
 		WINDOW **window_pointers = &cfg.win.info_win; // order:  info_win, output_win, input_win
@@ -497,7 +499,7 @@ void *clientMessageReciever(void *data)
 			}
 
 			char temp[128];
-			sprintf(temp,"[INFO] New Client -> pid : %d, Username : %s\n", command->senderPid, newUser->username);
+			sprintf(temp, "[INFO] New Client -> pid : %d, Username : %s\n", command->senderPid, newUser->username);
 			print_info(temp);
 
 			int fd = open(info->pathToFifo, O_RDWR);
@@ -707,7 +709,33 @@ void *clientMessageReciever(void *data)
 
 		case LIST_TOPIC_MESSAGES:
 		{
+			lock_msgs(true);
+			lock_users(true);
 
+			char *topic = buffer;
+			User *user = getUser(command->senderPid);
+			int n_messages = messagesInTopic(topic);
+			int element_size = USERNAME_L + TITLE_L + sizeof(int);
+			int total_buffer_size = n_messages * element_size;
+			void *ptr = malloc(total_buffer_size);
+			void *temp = ptr;
+			Node *node = cfg.msgs.head;
+			while (node != NULL)
+			{
+				Message *message = (Message *)node->data;
+				if (strcmp(message->topic, topic) == 0)
+				{
+					MessageInfo *info = temp;
+					info->id = message->id;
+					memcpy(info->title, message->title, TITLE_L);
+					memcpy(info->username, message->username, USERNAME_L);
+					temp = temp + element_size;
+				}
+				node = node->next;
+			}
+			sendToClient(user, LIST_TOPIC_MESSAGES, ptr, total_buffer_size);
+			lock_msgs(false);
+			lock_users(false);
 		}
 
 		case GET_MESSAGE:
@@ -717,9 +745,11 @@ void *clientMessageReciever(void *data)
 			User *user = getUser(command->senderPid);
 			int *id = buffer;
 			Message *message = getMessageById(*id);
-			if(message == NULL){
-				sendToClient(user,MESSAGE_NOT_FOUND,NULL,0);
-			} else
+			if (message == NULL)
+			{
+				sendToClient(user, MESSAGE_NOT_FOUND, NULL, 0);
+			}
+			else
 				sendToClient(user, GET_MESSAGE, message, sizeof(Message));
 			lock_msgs(false);
 			lock_users(false);

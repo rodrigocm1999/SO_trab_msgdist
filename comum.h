@@ -87,6 +87,12 @@ typedef struct MessageNotification{
 	char topic[TOPIC_L];
 }MessageNotification;
 
+typedef struct MessageInfo{
+	int id;
+	char username[USERNAME_L];
+	char title[TITLE_L];
+}MessageInfo;
+
 Buffer joinCommandStruct(Command* command,void* other, size_t otherSize);
 
 int isServerRunning();
