@@ -451,25 +451,22 @@ void *clientMessageReciever(void *data)
 			newUser->topics.head = NULL;
 			strcpy(newUser->username, info->username);
 
-			int wasRepeated = false;
+			int wasRepeated = false, n_fixes = 0;
 
 			while (getUserNodeByUsername(newUser->username) != NULL)
 			{
 				wasRepeated = true;
 
 				// add number to username if dupped
-				char *underline = &newUser->username[strlen(newUser->username)];
+				char *underline = newUser->username + strlen(newUser->username) - 2;
 				int currentNumber = atoi(underline + 1);
 
-				if (strncmp(underline, "_", 1) == 0)
-				{ //if it has an underline
-					sprintf(underline, "_%d", currentNumber + 1);
-					wprintw(cfg.win.info_win, "New number : %d\n", currentNumber + 1);
-				}
+				if (n_fixes == 0)
+					sprintf(newUser->username + strlen(newUser->username), "_1");
 				else
-				{
-					sprintf(underline, "_1");
-				}
+					sprintf(underline, "_%d", currentNumber + 1);
+
+				n_fixes++;
 			}
 
 			char temp[128];
@@ -1139,7 +1136,6 @@ void start_ncurses()
 	initscr();
 	nonl();
 	intrflush(stdscr, FALSE);
-	
 
 	int height, width;
 	getmaxyx(stdscr, height, width);

@@ -1,8 +1,19 @@
 
 # Cliente
+<<<<<<< HEAD
   - Consultar a lista de títulos de mensagens de um determinado tópico.
   - Consultar uma mensagem de um tópico.
   - avisar do maximo de msg quando envia mensagem
   - Check stuff (all of it)....
   - O utilizador indica o seu username ao programa cliente como argomento da linha de comandos.
   - fix_client mesasage topic rwriting scanf doesnt get after space
+=======
+   - duration on message from client
+
+   - Consultar a lista de títulos de mensagens de um determinado tópico.
+   - Consultar uma mensagem de um tópico.
+   - avisar do maximo de msg quando envia mensagem
+   - Check stuff (all of it)....
+   - O utilizador indica o seu username ao programa cliente como argomento da linha de comandos.
+   - fix_client mesasage topic rwriting scanf doesnt get after space
+>>>>>>> 28de88f3df038d213e1bddfbfbf1e8acc7c8a226
