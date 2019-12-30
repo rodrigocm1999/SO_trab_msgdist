@@ -1,19 +1,8 @@
 
-list  client subscriptions
-
-interface client
-
-auto adjust interface on terminal redimension
-
-fix_client mesasage topic rwriting scanf doesnt get after space
-
 # Cliente
-   - Consultar a lista de títulos de mensagens de um determinado tópico.
-   - Consultar uma mensagem de um tópico.
-   - Check everything cuz nothing works
-
-
- O utilizador indica o seu username ao programa cliente como argomento da linha de comandos.
-
- # Gestor
-   - `MAXMSG` ->    Cliente -> avisar do maximo de msg.
+  - Consultar a lista de títulos de mensagens de um determinado tópico.
+  - Consultar uma mensagem de um tópico.
+  - avisar do maximo de msg quando envia mensagem
+  - Check stuff (all of it)....
+  - O utilizador indica o seu username ao programa cliente como argomento da linha de comandos.
+  - fix_client mesasage topic rwriting scanf doesnt get after space

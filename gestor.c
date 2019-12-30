@@ -1,5 +1,4 @@
 #include "gestor.h"
-#include <locale.h>
 
 ServerConfig cfg;
 
@@ -38,6 +37,20 @@ int main(int argc, char *argv[])
 
 	// Variable Initialization
 	{
+		int error = 0;
+		error |= pthread_mutex_init(&cfg.mutex.msgsLock, NULL);
+		error |= pthread_mutex_init(&cfg.mutex.topicsLock, NULL);
+		error |= pthread_mutex_init(&cfg.mutex.usersLock, NULL);
+		if (error != 0)
+		{
+			print_info("Mutex creation has failed\n");
+			shutdown(SIGINT);
+		}
+
+		start_ncurses();
+		signal(SIGWINCH, resize_mid_way);
+		signal(SIGALRM,terminal_resize);
+
 		cfg.msgId = 0;
 		cfg.filter = 1;
 		cfg.users.head = NULL;
@@ -53,43 +66,10 @@ int main(int argc, char *argv[])
 		}
 		else
 			cfg.max_messages = DEFAULTMAXMSG;
-
-		int error = 0;
-		error |= pthread_mutex_init(&cfg.mutex.msgsLock, NULL);
-		error |= pthread_mutex_init(&cfg.mutex.topicsLock, NULL);
-		error |= pthread_mutex_init(&cfg.mutex.usersLock, NULL);
-		if (error != 0)
-		{
-			print_info("Mutex creation has failed\n");
-			shutdown(SIGINT);
-		}
-
-		// Start ncurses windows
-		initscr();
-		nonl();
-		intrflush(stdscr, FALSE);
-		keypad(stdscr, TRUE);
-		const int box_width = 100;
-		int box_sizes[] = {14, 14, 3};
-		WINDOW **window_pointers = &cfg.win.info_win; // order:  info_win, output_win, input_win
-		WINDOW **border_pointers = &cfg.win.border_info_win;
-		int y_offset = 0;
-
-		for (int i = 0; i < 3; i++)
-		{
-			WINDOW *box_border = newwin(box_sizes[i], box_width, y_offset, 0);
-			border_pointers[i] = box_border;
-			box(box_border, 0, 0);
-			wrefresh(box_border);
-			//WINDOW *pdstr;
-			//pdstr = &window_pointers[i];
-			window_pointers[i] = newwin(box_sizes[i] - 2, box_width - 2, y_offset + 1, 1);
-			y_offset += box_sizes[i];
-		}
-
-		scrollok(cfg.win.info_win, true);
-		scrollok(cfg.win.output_win, true);
-	}
+		char temp2[64];
+		sprintf(temp2, "[INFO] MAXMSG = %d\n", cfg.max_messages);
+		print_info(temp2);
+	}	
 
 	//Start words verifier
 	{
@@ -167,14 +147,9 @@ int main(int argc, char *argv[])
 	char *cmd;
 	while (1)
 	{
-		wclear(cfg.win.input_win);
-		refresh_all_windows();
-
-		//printf("-> ");
-		//mvwscanw(cfg.win.input_win, 1, 1, "%s", command);
-		wmove(cfg.win.input_win, 0, 0);
+		
 		wgetstr(cfg.win.input_win, command);
-		//fgets(command, 512, stdin);
+		wclear(cfg.win.input_win);
 		cmd = strtok(command, DELIM);
 
 		if (cmd != NULL)
@@ -437,7 +412,6 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-// TODO
 void *clientMessageReciever(void *data)
 {
 
@@ -715,23 +689,33 @@ void *clientMessageReciever(void *data)
 			char *topic = buffer;
 			User *user = getUser(command->senderPid);
 			int n_messages = messagesInTopic(topic);
-			int element_size = USERNAME_L + TITLE_L + sizeof(int);
-			int total_buffer_size = n_messages * element_size;
+			int total_buffer_size = sizeof(int) + n_messages * sizeof(MessageInfo);
 			void *ptr = malloc(total_buffer_size);
-			void *temp = ptr;
-			Node *node = cfg.msgs.head;
-			while (node != NULL)
 			{
-				Message *message = (Message *)node->data;
-				if (strcmp(message->topic, topic) == 0)
+				int *temp = ptr;
+				*temp = n_messages;
+			}
+			{
+				int counter = 0;
+				void *temp = ptr + sizeof(int);
+				Node *node = cfg.msgs.head;
+				while (node != NULL)
 				{
-					MessageInfo *info = temp;
-					info->id = message->id;
-					memcpy(info->title, message->title, TITLE_L);
-					memcpy(info->username, message->username, USERNAME_L);
-					temp = temp + element_size;
+					Message *message = (Message *)node->data;
+					if (strcmp(message->topic, topic) == 0)
+					{
+						MessageInfo *info = temp;
+						info->id = message->id;
+						memcpy(info->title, message->title, TITLE_L);
+						memcpy(info->username, message->username, USERNAME_L);
+
+						counter++;
+						if (counter > n_messages)
+							break;
+						temp = temp + sizeof(MessageInfo);
+					}
+					node = node->next;
 				}
-				node = node->next;
 			}
 			sendToClient(user, LIST_TOPIC_MESSAGES, ptr, total_buffer_size);
 			lock_msgs(false);
@@ -746,9 +730,7 @@ void *clientMessageReciever(void *data)
 			int *id = buffer;
 			Message *message = getMessageById(*id);
 			if (message == NULL)
-			{
 				sendToClient(user, MESSAGE_NOT_FOUND, NULL, 0);
-			}
 			else
 				sendToClient(user, GET_MESSAGE, message, sizeof(Message));
 			lock_msgs(false);
@@ -921,7 +903,7 @@ void printTopics(Node *head)
 	wprintw(cfg.win.output_win, "Topics : %d total\n\t#Topic -> users subscribed\n", LinkedList_getSize(&cfg.topics));
 
 	while (curr != NULL)
-	{ //TODO
+	{
 		char *topic = (char *)curr->data;
 		wprintw(cfg.win.output_win, "\t%s ->", topic);
 
@@ -936,6 +918,7 @@ void printTopics(Node *head)
 		wprintw(cfg.win.output_win, "\n");
 		curr = curr->next;
 	}
+	wrefresh(cfg.win.output_win);
 }
 void printUsers(Node *head)
 {
@@ -957,6 +940,7 @@ void printUsers(Node *head)
 
 		curr = curr->next;
 	}
+	wrefresh(cfg.win.output_win);
 }
 void printMsgs(Node *head)
 {
@@ -969,6 +953,7 @@ void printMsgs(Node *head)
 		wprintw(cfg.win.output_win, "Id : %d,\n\tTitle : %s,\n\tUsername : %s,\n\tTopic : %s\n", currMessage->id, currMessage->title, currMessage->username, currMessage->topic);
 		curr = curr->next;
 	}
+	wrefresh(cfg.win.output_win);
 }
 
 int messagesInTopic(char *topic)
@@ -1134,17 +1119,80 @@ void print_out(char *str)
 	wprintw(cfg.win.output_win, "%s", str);
 	wrefresh(cfg.win.output_win);
 }
-void refresh_all_windows() // TODO fix refresh
+void refresh_all_windows()
 {
-	wclear(stdscr);
+	wrefresh(stdscr);
 	box(cfg.win.border_info_win, 0, 0);
 	box(cfg.win.border_input_win, 0, 0);
 	box(cfg.win.border_output_win, 0, 0);
-	//wrefresh(cfg.win.border_info_win);
-	//wrefresh(cfg.win.border_input_win);
-	//wrefresh(cfg.win.border_output_win);
+	wrefresh(cfg.win.border_info_win);
+	wrefresh(cfg.win.border_input_win);
+	wrefresh(cfg.win.border_output_win);
 
-	//wrefresh(cfg.win.info_win);
-	//wrefresh(cfg.win.input_win);
-	//wrefresh(cfg.win.output_win);
+	wrefresh(cfg.win.info_win);
+	wrefresh(cfg.win.input_win);
+	wrefresh(cfg.win.output_win);
 }
+
+void start_ncurses()
+{
+	initscr();
+	nonl();
+	intrflush(stdscr, FALSE);
+	
+
+	int height, width;
+	getmaxyx(stdscr, height, width);
+
+	int info_screen_height = (height - 3) / 2;
+	int out_screen_height = height - 3 - info_screen_height;
+
+	int box_sizes[] = {info_screen_height, out_screen_height, 3};
+	WINDOW **window_pointers = &cfg.win.info_win; // order:  info_win, output_win, input_win
+	WINDOW **border_pointers = &cfg.win.border_info_win;
+	int y_offset = 0;
+
+	for (int i = 0; i < 3; i++)
+	{
+		border_pointers[i] = newwin(box_sizes[i], width, y_offset, 0);
+		window_pointers[i] = newwin(box_sizes[i] - 2, width - 2, y_offset + 1, 1);
+		y_offset += box_sizes[i];
+	}
+	scrollok(cfg.win.info_win, true);
+	scrollok(cfg.win.output_win, true);
+
+	refresh_all_windows();
+}
+
+void terminal_resize(int signal)
+{
+	struct winsize ws;
+	ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
+	resize_term(ws.ws_row,ws.ws_col);
+	
+	int height, width;
+	getmaxyx(stdscr, height, width);
+
+	int info_screen_height = (height - 3) / 2;
+	int out_screen_height = height - 3 - info_screen_height;
+
+	int box_sizes[] = {info_screen_height, out_screen_height, 3};
+	WINDOW **window_pointers = &cfg.win.info_win; // order:  info_win, output_win, input_win
+	WINDOW **border_pointers = &cfg.win.border_info_win;
+	int y_offset = 0;
+
+	for (int i = 0; i < 3; i++)
+	{
+		wresize(border_pointers[i], box_sizes[i], width);
+		mvwin(border_pointers[i], y_offset, 0);
+		wresize(window_pointers[i], box_sizes[i] - 2, width - 2);
+		mvwin(window_pointers[i], y_offset + 1, 1);
+		y_offset += box_sizes[i];
+	}
+	refresh_all_windows();
+}
+
+void resize_mid_way(int signal){
+	alarm(1);
+}
+

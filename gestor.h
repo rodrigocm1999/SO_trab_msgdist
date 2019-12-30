@@ -1,4 +1,5 @@
 #include "comum.h"
+#include <sys/ioctl.h>
 
 #define RECIEVE_BUFFER_SIZE 1024 * 16
 #define DELIM " \n"
@@ -88,6 +89,9 @@ void lock_msgs(int value);
 void lock_topics(int value);
 void lock_all(int value);
 
+void start_ncurses();
 void print_info(char *str);
 void print_out(char *str);
 void refresh_all_windows();
+void terminal_resize(int signal);
+void resize_mid_way(int signal);
