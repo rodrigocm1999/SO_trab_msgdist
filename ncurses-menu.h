@@ -1,7 +1,8 @@
 
+#define ctrl(x)           ((x) & 0x1f)
 extern int print_menu (int sty, int x, int alts, int width,
                        char title[], char entries[][100], int start);
-
+void shutdown(int warnServer);
 
 int
 n_chars (char *str)
@@ -196,6 +197,12 @@ print_menu (int sty, int x, int alts, int width,
             else
                 currow++;
         }
+        else if(key == ctrl('c'))
+        {
+            /* code */
+            shutdown(true);
+        }
+        
     }
     while (key != '\n' && key != '\r' && key != 459);
 

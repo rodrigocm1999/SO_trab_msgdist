@@ -14,10 +14,16 @@ int main(int argc, char *argv[])
 
 	signal(SIGINT, signalHandler);
 	signal(SIGPIPE, signalHandler);
-	printf("%d\n", getpid());
-	printf("Username: \n");
-	scanf("%s", cfg.username);
 
+	if (argc == 2)
+	{
+		strcpy(cfg.username, argv[1]);
+	}
+	else
+	{
+		printf("Username: \n");
+		scanf("%s", cfg.username);
+	}
 	//Criar fifo para servidor enviar coisas para cliente
 	// Enviar PID, username e talvez path para FIFO
 	// criar fifo em /tmp/
@@ -100,7 +106,6 @@ int main(int argc, char *argv[])
 	curs_set(0);
 
 	int choice;
-	
 
 	while (menu_ret != 5)
 	{
@@ -112,10 +117,9 @@ int main(int argc, char *argv[])
 		{						 /* You can't start an actual game.  */
 			erase();
 			refresh();
-			WINDOW* newMessageWindow = newwin(20,70,1,1);
-			box(newMessageWindow,0,0);
+			WINDOW *newMessageWindow = newwin(20, 70, 1, 1);
+			box(newMessageWindow, 0, 0);
 			wrefresh(newMessageWindow);
-
 
 			Message message;
 			strcpy(message.username, cfg.username);
@@ -126,7 +130,7 @@ int main(int argc, char *argv[])
 			mvprintw(2, 2, "Topico da menssagem: ");
 			//refresh();
 			scanw("%s", message.topic);
-			
+
 			mvprintw(5, 2, "Titulo da menssagem: ");
 			refresh();
 			scanw("%s", message.title);
@@ -137,6 +141,10 @@ int main(int argc, char *argv[])
 			refresh();
 			scanw("%s", message.body);
 
+			mvprintw(19, 2, "Duracao: ");
+			refresh();
+			scanw("%d", message.duration);
+
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
 			mvprintw(19, 50, "Mensagem enviada");
 			getch();
@@ -145,44 +153,63 @@ int main(int argc, char *argv[])
 		{						 /* menu will show up without erasing */
 			do					 /* the main menu. */
 			{
-				menu_ret2 = print_menu(3, 26, 4, 15,"SELECT", alts2, 1);
-
-
+				menu_ret2 = print_menu(3, 26, 4, 15, "SELECT", alts2, 1);
+				
 				if (menu_ret2 == 1)
 				{
 					// List Topics
 					erase();
 					refresh();
-					
-					cfg.win.topicsWindow = newwin(20,70,1,1);
-					box(cfg.win.topicsWindow,0,0);
+
+					cfg.win.topicsWindow = newwin(20, 70, 1, 1);
+					box(cfg.win.topicsWindow, 0, 0);
 					wrefresh(cfg.win.topicsWindow);
 
 					sendToServer(GET_TOPICS, NULL, 0);
 
-					cfg.win.borderTopicsWindow = newwin(20,70,1,1);
-					box(cfg.win.borderTopicsWindow,0,0);
-					wrefresh(cfg.win.borderTopicsWindow);
 					refresh();
-					getch();
 					wclear(cfg.win.topicsWindow);
+					getch();
 					erase();
+					refresh();
 				}
 				if (menu_ret2 == 2)
 				{
 					erase();
 					refresh();
-					WINDOW *titlesFromTopicWindow = newwin(20,70,1,1);
-					box(titlesFromTopicWindow,0,0);
-					wrefresh(titlesFromTopicWindow);
+					
+					cfg.win.titlesFromTopicWindow = newwin(20, 70, 1, 1);
+					box(cfg.win.titlesFromTopicWindow, 0, 0);
+					wrefresh(cfg.win.titlesFromTopicWindow);
+
+					char topic[TOPIC_L];
+					echo();
+					mvprintw(2,2,"Topico: ");
+					scanw("%s",topic);
+					refresh();
+					sendToServer(LIST_TOPIC_MESSAGES,topic,sizeof(topic));
 
 					getch();
+					erase();
+					refresh();
 					// List Titles in Topic
 				}
 				if (menu_ret2 == 3)
 				{
-					WINDOW * messageFromTopicWindow = newwin(20,70,1,1);
-					// Read Message in Topic
+					cfg.win.messageFromTopicWindow = newwin(20, 70, 1, 1);
+					box(cfg.win.messageFromTopicWindow, 0, 0);
+					wrefresh(cfg.win.messageFromTopicWindow);
+
+					char topic[TOPIC_L];
+					echo();
+					mvprintw(2,2,"Topico: ");
+					scanw("%s",topic);
+					refresh();
+					sendToServer(GET_MESSAGE,topic,sizeof(topic));
+
+					getch();
+					erase();
+					refresh();
 				}
 				refresh();
 			} while (menu_ret2 != 4);
@@ -303,24 +330,45 @@ void *fifoListener(void *data)
 		}
 		case GET_TOPICS:
 		{
-			int * n_topicos = buffer;
+			int *n_topicos = buffer;
 			char *topicos;
 			buffer = buffer + sizeof(int);
-			
-			topicos = buffer;
 
-			//char str[TOPIC_L*(*n_topicos)];
-			for(int i = 0;i< * n_topicos;i++){
-				//for(int j=0; j < TOPIC_L;j++){
-					wprintw(cfg.win.topicsWindow,"%s\n", &topicos[i * TOPIC_L]);
-					//strncat(str, &topicos[i*TOPIC_L+j], 1);
-				//}
-				//strcat(str," \n");
+			topicos = buffer;
+			mvprintw(1,2,"Topicos:");
+			for (int i = 0; i < *n_topicos; i++)
+			{
+				mvprintw(2+i,2,"%s", &topicos[i * TOPIC_L]);
 			}
-			wrefresh(cfg.win.topicsWindow);
-			//print_infoWindow(str);
+			refresh();
+			
 			break;
 		}
+		case LIST_TOPIC_MESSAGES:
+		{
+			
+			int *n_titles = buffer;
+			char *titles;
+			buffer = buffer +sizeof(int);
+
+			titles = buffer;
+			for(int i = 0; i < *n_titles;i++){
+				mvprintw(4+i,2,"%s\n",&titles[i*TITLE_L]);
+			}
+			wrefresh(cfg.win.titlesFromTopicWindow);
+			
+			refresh();
+			break;
+		}
+		case GET_MESSAGE:
+		{
+			Message *message = (Message*)buffer;
+			mvprintw(3,2,message->title);
+			mvprintw(4,2,message->body);
+			refresh();
+
+		}
+
 		default:
 			printf("Not Recognized Command\n");
 			break;
@@ -338,8 +386,8 @@ void shutdown(int warnServer)
 	close(cfg.server);
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
-	sleep(1);
-	execlp("reset", "reset", NULL); // resets terminal
+	endwin();
+	//execlp("reset", "reset", NULL); // resets terminal
 	exit(0);
 }
 
@@ -349,6 +397,12 @@ void signalHandler(int signal)
 	{
 		printf("Server Down\n");
 	}
+	/*
+	if (signal == SIGINT)
+	{
+		shutdown(true);
+	}
+	*/
 	shutdown(false);
 }
 
@@ -374,7 +428,8 @@ int sendToServer(int cmd, void *other, size_t size)
 	return written;
 }
 
-void print_infoWindow(char *str){
-	wprintw(cfg.win.topicsWindow,"%s",str);
+void print_infoWindow(char *str)
+{
+	wprintw(cfg.win.topicsWindow, "%s", str);
 	wrefresh(cfg.win.topicsWindow);
 }
