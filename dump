@@ -1,3 +1,9 @@
-[01:16:43]:[INFO] WORDSNOT = ./badwords.txt
-[01:16:43]:[INFO] MAXNOT = 2
-[02:20:40]:[INFO] Shuting Down
+[17:33:42]:[INFO] MAXMSG = 50
+[17:33:42]:[INFO] WORDSNOT = ./badwords.txt
+[17:33:42]:[INFO] MAXNOT = 2
+[17:33:44]:[INFO] New Client -> pid : 24109, Username : yeet_e
+[17:33:46]:[INFO] New Client -> pid : 24162, Username : yeet_e_1
+[17:33:48]:[INFO] New Client -> pid : 24171, Username : yeet_
+[17:33:50]:[INFO] User Left -> yeet_
+[17:33:52]:[INFO] New Client -> pid : 24186, Username : yeet_e_2
+[17:40:13]:[INFO] Shuting Down
