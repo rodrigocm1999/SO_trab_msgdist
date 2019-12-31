@@ -24,29 +24,3 @@ Buffer joinCommandStruct(Command* command,void* other, size_t otherSize){
     }
     return buffer;
 }
-
-
-
-/*int isRunning(){
-	int fd = open(LISTENERPATH,O_RDWR);
-    if(fd == -1){
-        return 0;
-    }
-    close(fd);
-	 return 1;
-	/*int deleted = unlink(LISTENERPATH);
-	if(deleted != 0) {// non success
-
-		int fd = open(LISTENERPATH,O_WRONLY);
-		if(fd == -1){ 
-			return 0;
-		}
-		close(fd);
-		return 1;
-	}
-   return deleted == 0 ? 0 : 1;
-
-	if( access( LISTENERPATH, F_OK ) != -1 ) {
-		
-	}
-}*/

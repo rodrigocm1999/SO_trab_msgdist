@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 
 		start_ncurses();
 		signal(SIGWINCH, resize_mid_way);
-		signal(SIGALRM,terminal_resize);
+		signal(SIGALRM, terminal_resize);
 
 		cfg.msgId = 0;
 		cfg.filter = 1;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 		char temp2[64];
 		sprintf(temp2, "[INFO] MAXMSG = %d\n", cfg.max_messages);
 		print_info(temp2);
-	}	
+	}
 
 	//Start words verifier
 	{
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	char *cmd;
 	while (1)
 	{
-		
+
 		wgetstr(cfg.win.input_win, command);
 		wclear(cfg.win.input_win);
 		cmd = strtok(command, DELIM);
@@ -414,29 +414,30 @@ int main(int argc, char *argv[])
 
 void *clientMessageReciever(void *data)
 {
-
+	// criar named pipe a que os utilizadores se vão ligar
 	int result = mkfifo(LISTENER_PATH, 0666);
 	if (result != 0)
 	{
 		print_info("[ERROR]Creating listener fifo : already exists\n");
 		exit(0);
 	}
+	// abrir o named pipe
 	int fifo = open(LISTENER_PATH, O_RDWR);
 	if (fifo == -1)
 	{
 		print_info("[ERROR]Main client listener creation error (FIFO)\n");
 		exit(0);
 	}
-
+	// alocar um pedaço de memória para preencher com os dados que vem no pipe
+	void *mem_block = malloc(RECIEVE_BUFFER_SIZE);
 	while (1)
 	{
-		char buff[RECIEVE_BUFFER_SIZE];
-		void *buffer = buff;
-
-		int bCount = read(fifo, buffer, RECIEVE_BUFFER_SIZE * sizeof(char));
+		void *buffer = mem_block;
+		read(fifo, buffer, RECIEVE_BUFFER_SIZE);
+		//pegar informação do comando
 		Command *command = (Command *)buffer;
+		//colocar ponteiro do buffer a apontar para o inicio da informação enviada
 		buffer = buffer + sizeof(Command);
-		//fprintf(stderr,"[INFO]Recebeu commando : %d , size : %zu , clientPid : %d\n", command->cmd,command->structSize,command->clientPid);
 
 		switch (command->cmd)
 		{
@@ -446,6 +447,7 @@ void *clientMessageReciever(void *data)
 			lock_users(true);
 			NewClientInfo *info = (NewClientInfo *)buffer;
 			User *newUser = malloc(sizeof(User));
+			// preencher o user com a informação recebida
 			newUser->pid = info->pid;
 			newUser->beat = true;
 			newUser->topics.head = NULL;
@@ -453,6 +455,7 @@ void *clientMessageReciever(void *data)
 
 			int wasRepeated = false, n_fixes = 0;
 
+			//enquanto for repetido
 			while (getUserNodeByUsername(newUser->username) != NULL)
 			{
 				wasRepeated = true;
@@ -460,7 +463,7 @@ void *clientMessageReciever(void *data)
 				// add number to username if dupped
 				char *underline = newUser->username + strlen(newUser->username) - 2;
 				int currentNumber = atoi(underline + 1);
-
+				// se for o primeiro arranjo ao nome colocar _1 no final
 				if (n_fixes == 0)
 					sprintf(newUser->username + strlen(newUser->username), "_1");
 				else
@@ -477,20 +480,17 @@ void *clientMessageReciever(void *data)
 			if (fd == -1)
 			{
 				print_info("[ERROR]Error opening user fifo : Descarting User\n");
+				free(newUser);
 			}
 			else
 			{
 				newUser->fifo = fd;
 				LinkedList_append(&cfg.users, newUser);
-
+				// avisar o cliente acerca do nome
 				if (wasRepeated)
-				{
 					sendToClient(newUser, USERNAME_REPEATED, newUser->username, USERNAME_L);
-				}
 				else
-				{
 					sendToClient(newUser, USERNAME_OK, NULL, 0);
-				}
 			}
 			lock_users(false);
 			break;
@@ -510,6 +510,7 @@ void *clientMessageReciever(void *data)
 			}
 
 			int allowed = 1;
+			//se o filtro de palavras estiver ligado
 			if (cfg.filter)
 			{
 				int badWordsCount = verifyBadWords(message);
@@ -525,14 +526,17 @@ void *clientMessageReciever(void *data)
 			}
 			if (allowed)
 			{
+				//alocar memoria para guardar a mensagem
 				Message *realMessage = malloc(sizeof(Message));
+				// copiar tudo para o novo bloco
 				memcpy(realMessage, message, sizeof(Message));
 				realMessage->id = ++cfg.msgId;
-				realMessage->duration = MESSAGE_DURATION;
+				if (realMessage->duration <= 0)
+					realMessage->duration = MESSAGE_DURATION;
 
 				LinkedList_append(&cfg.msgs, realMessage);
 				Node *currTopic = cfg.topics.head;
-				//check if topic exists
+				//verificar se o topico existe
 				int found = 0;
 				while (currTopic != NULL)
 				{
@@ -547,10 +551,10 @@ void *clientMessageReciever(void *data)
 					}
 					currTopic = currTopic->next;
 				}
-				//add new topic if doesn't exist
+				//adicionar topico se não existir
 				if (found == 0)
 				{
-					//Create new Topic
+					//alocar um bloco e colocar la os caracteres
 					char *topic = malloc(sizeof(char) * TOPIC_L);
 					strcpy(topic, realMessage->topic);
 					LinkedList_append(&cfg.topics, topic);
@@ -560,7 +564,7 @@ void *clientMessageReciever(void *data)
 					print_info(temp);
 				}
 
-				// Send Notification to all subscribed clients
+				// enviar notificação a todos os clientes subscritos ao topico
 				MessageNotification notification;
 				notification.id = realMessage->id;
 				strncpy(notification.topic, realMessage->topic, TOPIC_L);
@@ -569,7 +573,7 @@ void *clientMessageReciever(void *data)
 				while (currUserNode != NULL)
 				{
 					User *currUser = (User *)currUserNode->data;
-					// If user is subscribed send notification
+					// Se estiver subscrito
 					if (getUserTopicNode(currUser, realMessage->topic) != NULL)
 						sendBufferToClient(currUser, buffer);
 					currUserNode = currUserNode->next;
@@ -597,16 +601,17 @@ void *clientMessageReciever(void *data)
 			User *user = getUser(command->senderPid);
 			char *topic = buffer;
 			Node *topicNode = getTopicNode(topic);
-
+			// se o topico existir
 			if (topicNode != NULL)
-			{ // if topic exists
+			{
 				char *topicChar = (char *)topicNode->data;
 				Node *userTopic = getUserTopicNode(user, topicChar);
+				// se o utilizador ainda não estiver subscrito
 				if (userTopic == NULL)
 				{
 					LinkedList_append(&user->topics, topicNode->data);
 					char temp[256];
-					sprintf(temp, "[INFO]User \"%s\" subscribed to topic \"%s\"\n", user->username, topic);
+					sprintf(temp, "[INFO] User \"%s\" subscribed to topic \"%s\"\n", user->username, topic);
 					print_info(temp);
 					sendToClient(user, SUBSCRIBED_TO_TOPIC, NULL, 0);
 				}
@@ -630,11 +635,11 @@ void *clientMessageReciever(void *data)
 			lock_topics(true);
 			User *user = getUser(command->senderPid);
 			char *topic = buffer;
-
+			// se conseguir remover topico ao utilizador quer dizer que estava subscrito
 			if (deleteUserTopic(user, topic) == true)
 			{
 				char temp[128];
-				sprintf(temp, "User \"%s\" unsubscribed to topic \"%s\"\n", user->username, topic);
+				sprintf(temp, "[INFO] User \"%s\" unsubscribed to topic \"%s\"\n", user->username, topic);
 				print_info(temp);
 				sendToClient(user, UNSUBSCRIBE_TOPIC, NULL, 0);
 			}
@@ -652,18 +657,17 @@ void *clientMessageReciever(void *data)
 			int topicsAmount = LinkedList_getSize(&cfg.topics);
 			int totalBufferSize = sizeof(int) + topicsAmount * TOPIC_L;
 			void *ptr = malloc(totalBufferSize);
-			{
-				//topics amount
-				int *temp = ptr;
-				*temp = topicsAmount;
-			}
-			//memcpy(ptr, &topicsAmount, sizeof(int)); // amount of topics
+			//topics amount
+			int *int_ptr = ptr;
+			*int_ptr = topicsAmount;
+
 			char *temp = ptr + sizeof(int);
 
 			Node *curr = cfg.topics.head;
 			for (int i = 0; i < topicsAmount && curr != NULL; i++)
 			{
 				char *pos = temp + i * TOPIC_L;
+				// copiar o topico para o buffer
 				memcpy(pos, curr->data, TOPIC_L);
 				curr = curr->next;
 			}
@@ -682,16 +686,20 @@ void *clientMessageReciever(void *data)
 		{
 			lock_msgs(true);
 			lock_users(true);
+			User *user = getUser(command->senderPid);
+			lock_users(false);
 
 			char *topic = buffer;
-			User *user = getUser(command->senderPid);
 			int n_messages = messagesInTopic(topic);
 			int total_buffer_size = sizeof(int) + n_messages * sizeof(MessageInfo);
 			void *ptr = malloc(total_buffer_size);
-			{
-				int *temp = ptr;
-				*temp = n_messages;
-			}
+
+			int *int_ptr = ptr;
+			*int_ptr = n_messages;
+
+			char str[1024];
+
+			if (n_messages != 0)
 			{
 				int counter = 0;
 				void *temp = ptr + sizeof(int);
@@ -702,12 +710,14 @@ void *clientMessageReciever(void *data)
 					if (strcmp(message->topic, topic) == 0)
 					{
 						MessageInfo *info = temp;
+						//copiar os varios campos
 						info->id = message->id;
 						memcpy(info->title, message->title, TITLE_L);
 						memcpy(info->username, message->username, USERNAME_L);
 
 						counter++;
-						if (counter > n_messages)
+						// parar de andar na lista se ja tiver copiado todos
+						if (counter == n_messages)
 							break;
 						temp = temp + sizeof(MessageInfo);
 					}
@@ -715,8 +725,8 @@ void *clientMessageReciever(void *data)
 				}
 			}
 			sendToClient(user, LIST_TOPIC_MESSAGES, ptr, total_buffer_size);
+			free(ptr);
 			lock_msgs(false);
-			lock_users(false);
 		}
 
 		case GET_MESSAGE:
@@ -758,12 +768,14 @@ void *checkAllClientsState(void *data)
 {
 	while (1)
 	{
+		//a cada 10 segundos verificar se foi recebido um "beat" de cada utilizador
 		sleep(10);
 		lock_users(true);
 		Node *curr = cfg.users.head;
 		while (curr != NULL)
 		{
 			User *user = (User *)curr->data;
+			// se não tiver recebido. quer dizer que nao existe ligação com o mesmo
 			if (user->beat == false)
 				userLeft(curr);
 			user->beat = false;
@@ -778,6 +790,7 @@ void *checkMessageTimeout(void *data)
 	int const sleepTime = 1;
 	while (true)
 	{
+		//apos cada segundo atualizar a duração restante
 		sleep(sleepTime);
 		lock_msgs(true);
 		Node *curr = cfg.msgs.head;
@@ -786,16 +799,17 @@ void *checkMessageTimeout(void *data)
 			Message *message = (Message *)curr->data;
 			Node *next = curr->next;
 			message->duration = message->duration - sleepTime;
-			if (message->duration < 0)
+			// e remover mensagens qu expiraram
+			if (message->duration <= 0)
 			{
+				char temp[256];
+				sprintf(temp, "[INFO] Message Timeout -> id : '%d'\n", message->id);
+				print_info(temp);
+
 				//Delete message
 				LinkedList_detachNode(&cfg.msgs, curr);
 				free(curr->data);
 				free(curr);
-
-				char temp[256];
-				sprintf(temp, "[INFO] Message Timeout -> id : '%d'\n", message->id);
-				print_info(temp);
 			}
 			curr = next;
 		}
@@ -824,11 +838,13 @@ int verifyBadWords(Message *message)
 void shutdown(int signal)
 {
 	print_info("[INFO] Shuting Down\n");
+	//apagar named pipe
 	unlink(LISTENER_PATH);
 	Node *curr = cfg.users.head;
 	while (curr != NULL)
 	{
 		User *currUser = (User *)curr->data;
+		// avisar cada user que o gestor está a dar shutdown
 		sendToClient(currUser, SERVER_SHUTDOWN, NULL, 0);
 		curr = curr->next;
 	}
@@ -857,6 +873,7 @@ void userLeft(Node *node)
 		currNode = nextnode;
 	}
 
+	// Avisar que saiu
 	char temp[256];
 	sprintf(temp, "[INFO] User Left -> %s\n", user->username);
 	print_info(temp);
@@ -867,14 +884,14 @@ void userLeft(Node *node)
 	// 3º limpar o node do user
 	free(node);
 }
-
+// Relacionado com o envio para os clientes -----
 void sendToClient(User *user, int cmd, void *other, size_t size)
 {
 	Command command;
 	command.cmd = cmd;
 	command.senderPid = getpid();
 	command.structSize = size;
-
+	// juntar o comando e o resto da informação num só buffer
 	Buffer buffer = joinCommandStruct(&command, other, size);
 	write(user->fifo, buffer.ptr, buffer.size);
 	free(buffer.ptr);
@@ -893,7 +910,8 @@ void sendBufferToClient(User *user, Buffer buffer)
 { //Used in loops
 	write(user->fifo, buffer.ptr, buffer.size);
 }
-
+//----------------------------------------
+//Util -----------------------------------
 void printTopics(Node *head)
 {
 	Node *curr = head;
@@ -970,7 +988,6 @@ int messagesInTopic(char *topic)
 	}
 	return count;
 }
-
 Node *getUserNode(pid_t pid)
 {
 	Node *curr = cfg.users.head;
@@ -1061,7 +1078,8 @@ int deleteUserTopic(User *user, char *topic)
 	sendToClient(user, TOPIC_DELETED, NULL, 0);
 	return true;
 }
-
+//------------------------------------------
+//Mutexes ----------------------------------
 void lock_m(pthread_mutex_t *mutex)
 {
 	pthread_mutex_lock(mutex);
@@ -1097,7 +1115,8 @@ void lock_all(int value)
 	lock_msgs(value);
 	lock_topics(value);
 }
-
+//-----------------------------------------
+//Interface -------------------------------
 void print_info(char *str)
 {
 	time_t rawtime;
@@ -1118,14 +1137,16 @@ void print_out(char *str)
 }
 void refresh_all_windows()
 {
+	//apaga tudo do ecrã (stdscr está vazio)
 	wrefresh(stdscr);
+	//desenhar as linhas á volta dos espaços de texto
 	box(cfg.win.border_info_win, 0, 0);
 	box(cfg.win.border_input_win, 0, 0);
 	box(cfg.win.border_output_win, 0, 0);
 	wrefresh(cfg.win.border_info_win);
 	wrefresh(cfg.win.border_input_win);
 	wrefresh(cfg.win.border_output_win);
-
+	//voltar a desenhar o texto
 	wrefresh(cfg.win.info_win);
 	wrefresh(cfg.win.input_win);
 	wrefresh(cfg.win.output_win);
@@ -1163,9 +1184,10 @@ void start_ncurses()
 void terminal_resize(int signal)
 {
 	struct winsize ws;
+	//obter tamanho do terminal
 	ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
-	resize_term(ws.ws_row,ws.ws_col);
-	
+	resize_term(ws.ws_row, ws.ws_col);
+
 	int height, width;
 	getmaxyx(stdscr, height, width);
 
@@ -1188,7 +1210,10 @@ void terminal_resize(int signal)
 	refresh_all_windows();
 }
 
-void resize_mid_way(int signal){
+void resize_mid_way(int signal)
+{
+	//usado para impedir o resize instantaneo por cada pequeno movimento
+	//assim apos parar de mexer no tamanho do terminal é que aconteçe o rezise
 	alarm(1);
 }
-
+// -----------------------------------------
