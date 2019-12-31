@@ -127,26 +127,26 @@ int main(int argc, char *argv[])
 			char msg[1000];
 
 			echo();
-			mvprintw(2, 2, "Topico da menssagem: ");
+			mvprintw(2, 2, "Topic: ");
 			//refresh();
 			scanw("%s", message.topic);
 
-			mvprintw(5, 2, "Titulo da menssagem: ");
+			mvprintw(5, 2, "Title: ");
 			refresh();
 			scanw("%s", message.title);
 
 			//Message newMsg(username,topic,titulo,msg);
 
-			mvprintw(8, 2, "Mensagem: ");
+			mvprintw(8, 2, "Body: ");
 			refresh();
 			scanw("%s", message.body);
-
+			/*
 			mvprintw(19, 2, "Duracao: ");
 			refresh();
 			scanw("%d", message.duration);
-
+			*/
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
-			mvprintw(19, 50, "Mensagem enviada");
+			mvprintw(19, 50, "Message sent");
 			getch();
 		}
 		if (menu_ret == 2) /* If you select load game, a new    */
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 
 					char topic[TOPIC_L];
 					echo();
-					mvprintw(2,2,"Topico: ");
+					mvprintw(2,2,"Topic: ");
 					scanw("%s",topic);
 					refresh();
 					sendToServer(LIST_TOPIC_MESSAGES,topic,sizeof(topic));
@@ -200,12 +200,12 @@ int main(int argc, char *argv[])
 					box(cfg.win.messageFromTopicWindow, 0, 0);
 					wrefresh(cfg.win.messageFromTopicWindow);
 
-					char topic[TOPIC_L];
+					int *id;
 					echo();
-					mvprintw(2,2,"Topico: ");
-					scanw("%s",topic);
+					mvprintw(2,2,"Topic ID: ");
+					scanw("%d",id);
 					refresh();
-					sendToServer(GET_MESSAGE,topic,sizeof(topic));
+					sendToServer(GET_MESSAGE,id,sizeof(int));
 
 					getch();
 					erase();
@@ -275,7 +275,7 @@ void *fifoListener(void *data)
 		void *buffer = buff;
 
 		int bCount = read(cfg.fifo, buffer, bufferSize);
-		fprintf(stderr, "[INFO]Recebeu bytes : %d\n", bCount);
+		fprintf(stderr, "[INFO]Recived bytes : %d\n", bCount);
 		Command *command = (Command *)buffer;
 		buffer = buffer + sizeof(Command);
 
@@ -335,7 +335,7 @@ void *fifoListener(void *data)
 			buffer = buffer + sizeof(int);
 
 			topicos = buffer;
-			mvprintw(1,2,"Topicos:");
+			mvprintw(1,2,"Topics:");
 			for (int i = 0; i < *n_topicos; i++)
 			{
 				mvprintw(2+i,2,"%s", &topicos[i * TOPIC_L]);
@@ -348,12 +348,16 @@ void *fifoListener(void *data)
 		{
 			
 			int *n_titles = buffer;
-			char *titles;
+			//char *titles;
 			buffer = buffer +sizeof(int);
-
-			titles = buffer;
-			for(int i = 0; i < *n_titles;i++){
-				mvprintw(4+i,2,"%s\n",&titles[i*TITLE_L]);
+			if(*n_titles != 0){
+				for(int i = 0; i < *n_titles;i++){
+					MessageInfo *info = buffer + i * sizeof(MessageInfo);
+					mvprintw(4+i,2,"Title: %s  ID: %d",info->title,info->id);
+				}
+			}else
+			{
+				wprintw(cfg.win.titlesFromTopicWindow,"Topic without menssages!");
 			}
 			wrefresh(cfg.win.titlesFromTopicWindow);
 			
@@ -362,13 +366,21 @@ void *fifoListener(void *data)
 		}
 		case GET_MESSAGE:
 		{
-			Message *message = (Message*)buffer;
-			mvprintw(3,2,message->title);
-			mvprintw(4,2,message->body);
+			
+			Message *info = buffer;
+			mvprintw(3,2,info->title);
+			mvprintw(4,2,info->body);
+			
 			refresh();
 
+			break;
 		}
-
+		case MESSAGE_NOT_FOUND:
+		{
+			wprintw(cfg.win.messageFromTopicWindow,"Message does not exist!");
+			refresh();
+			break;
+		}
 		default:
 			printf("Not Recognized Command\n");
 			break;
@@ -428,8 +440,3 @@ int sendToServer(int cmd, void *other, size_t size)
 	return written;
 }
 
-void print_infoWindow(char *str)
-{
-	wprintw(cfg.win.topicsWindow, "%s", str);
-	wrefresh(cfg.win.topicsWindow);
-}

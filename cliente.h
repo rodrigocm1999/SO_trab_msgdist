@@ -29,5 +29,3 @@ void signalHandler(int signal);
 void* heartbeat(void* data);
 int sendToServer(int cmd,void* other,size_t size);
 
-
-void print_infoWindow(char *str);
