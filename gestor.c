@@ -531,15 +531,8 @@ void *clientMessageReciever(void *data)
 				// copiar tudo para o novo bloco
 				memcpy(realMessage, message, sizeof(Message));
 				realMessage->id = ++cfg.msgId;
-<<<<<<< HEAD
 				if (realMessage->duration <= 0)
 					realMessage->duration = MESSAGE_DURATION;
-=======
-				//realMessage->duration = MESSAGE_DURATION;
-				if(realMessage->duration <=0){
-					realMessage->duration = MESSAGE_DURATION;
-				}
->>>>>>> 08bf81ae740ac550ef46a1b7cba6483a24bf65f0
 
 				LinkedList_append(&cfg.msgs, realMessage);
 				Node *currTopic = cfg.topics.head;
