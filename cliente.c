@@ -140,11 +140,22 @@ int main(int argc, char *argv[])
 			mvprintw(8, 2, "Body: ");
 			refresh();
 			scanw("%s", message.body);
-			/*
-			mvprintw(19, 2, "Duracao: ");
+			
+			mvprintw(19, 2, "Message Duration: ");
 			refresh();
-			scanw("%d", message.duration);
+			scanw("%d",&message.duration);
+			
+			/*
+			WINDOW *popupConfirmation = newwin(6,30,7,7);
+			box(popupConfirmation,0,0);
+			wrefresh(popupConfirmation);
+	
+			wprintw(popupConfirmation,"Continue to sent mensage?");
+			wprintw(popupConfirmation,"yes or not");
+			wrefresh(popupConfirmation);
+
 			*/
+			
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
 			mvprintw(19, 50, "Message sent");
 			getch();
@@ -167,8 +178,6 @@ int main(int argc, char *argv[])
 
 					sendToServer(GET_TOPICS, NULL, 0);
 
-					refresh();
-					wclear(cfg.win.topicsWindow);
 					getch();
 					erase();
 					refresh();
@@ -184,9 +193,10 @@ int main(int argc, char *argv[])
 
 					char topic[TOPIC_L];
 					echo();
-					mvprintw(2,2,"Topic: ");
-					scanw("%s",topic);
-					refresh();
+					mvwprintw(cfg.win.titlesFromTopicWindow,1,1,"Topic: ");
+					wrefresh(cfg.win.titlesFromTopicWindow);
+					wscanw(cfg.win.titlesFromTopicWindow,"%s",topic);
+					
 					sendToServer(LIST_TOPIC_MESSAGES,topic,sizeof(topic));
 
 					getch();
@@ -196,16 +206,19 @@ int main(int argc, char *argv[])
 				}
 				if (menu_ret2 == 3)
 				{
+					erase();
+					refresh();
+
 					cfg.win.messageFromTopicWindow = newwin(20, 70, 1, 1);
 					box(cfg.win.messageFromTopicWindow, 0, 0);
 					wrefresh(cfg.win.messageFromTopicWindow);
 
-					int *id;
 					echo();
-					mvprintw(2,2,"Topic ID: ");
-					scanw("%d",id);
-					refresh();
-					sendToServer(GET_MESSAGE,id,sizeof(int));
+					mvwprintw(cfg.win.messageFromTopicWindow,1,1,"Topic ID: ");
+					int *id;
+					wrefresh(cfg.win.messageFromTopicWindow);    
+					wscanw(cfg.win.messageFromTopicWindow,"%d",   &id   );  
+					sendToServer(GET_MESSAGE,    &id    ,sizeof(int));
 
 					getch();
 					erase();
@@ -239,7 +252,7 @@ int main(int argc, char *argv[])
 
 		if (menu_ret == 5)
 		{
-			mvprintw(6, 34, "Exiting");
+			//mvprintw(6, 34, "Exiting");
 			shutdown(true);
 		}
 
@@ -275,7 +288,7 @@ void *fifoListener(void *data)
 		void *buffer = buff;
 
 		int bCount = read(cfg.fifo, buffer, bufferSize);
-		fprintf(stderr, "[INFO]Recived bytes : %d\n", bCount);
+		//fprintf(stderr, "[INFO]Recived bytes : %d\n", bCount);
 		Command *command = (Command *)buffer;
 		buffer = buffer + sizeof(Command);
 
@@ -284,48 +297,58 @@ void *fifoListener(void *data)
 
 		case SERVER_SHUTDOWN:
 		{
-			printf("Server "); // Intented to not change line
+			mvprintw(17,5,"Server Shuting Down"); // Intented to not change line
+			refresh();
 			shutdown(false);
 		}
 		case KICKED:
 		{
-			printf("Kicked from server\nServer "); // Intented to not change line
+			mvprintw(17,5,"Kicked from server\nServer "); // Intented to not change line
+			refresh();
 			shutdown(false);
 		}
 		case SUBSCRIBED_TO_TOPIC:
 		{
-			printf("Subscrition sucessuful\n");
+			mvprintw(17,5,"Subscrition sucessuful\n");
+			refresh();
 			break;
 		}
 		case UNSUBSCRIBE_TOPIC:
 		{
-			printf("Unsubscrition sucessuful\n");
+			mvprintw(17,5,"Unsubscrition sucessuful\n");
+			refresh();
 			break;
 		}
 		case TOPIC_DELETED:
 		{
-			printf("Topic deleted\n");
+			mvprintw(17,5,"Topic deleted\n");
+			refresh();
 			break;
 		}
 		case ALREADY_SUBSCRIBED:
 		{
-			printf("Already subscribed\n");
+			mvprintw(17,5,"Already subscribed\n");
+			refresh();
 			break;
 		}
 		case NON_EXISTENT_TOPIC:
 		{
-			printf("Non existent topic\n");
+			mvprintw(17,5,"Non existent topic\n");
+			refresh();
 			break;
 		}
 		case MESSAGE_NOTIFICATION:
 		{
 			MessageNotification *notification = buffer;
-			printf("New Message with id : '%d' from topic : '%s'\n", notification->id, notification->topic);
+			sleep(2);
+			mvprintw(17,5,"New Message with id : '%d' from topic : '%s'", notification->id, notification->topic);
+			refresh();
 			break;
 		}
 		case BAD_MESSAGE:
 		{
-			printf("Message discarded\n");
+			mvprintw(17,5,"Message discarded\n");
+			refresh();
 			break;
 		}
 		case GET_TOPICS:
@@ -335,12 +358,13 @@ void *fifoListener(void *data)
 			buffer = buffer + sizeof(int);
 
 			topicos = buffer;
-			mvprintw(1,2,"Topics:");
+			mvwprintw(cfg.win.topicsWindow,1,1,"Topics:");
+			wrefresh(cfg.win.topicsWindow);
 			for (int i = 0; i < *n_topicos; i++)
 			{
-				mvprintw(2+i,2,"%s", &topicos[i * TOPIC_L]);
+				mvwprintw(cfg.win.topicsWindow,3+i,1,"- %s", &topicos[i * TOPIC_L]);
 			}
-			refresh();
+			wrefresh(cfg.win.topicsWindow);
 			
 			break;
 		}
@@ -353,36 +377,36 @@ void *fifoListener(void *data)
 			if(*n_titles != 0){
 				for(int i = 0; i < *n_titles;i++){
 					MessageInfo *info = buffer + i * sizeof(MessageInfo);
-					mvprintw(4+i,2,"Title: %s  ID: %d",info->title,info->id);
+					mvwprintw(cfg.win.titlesFromTopicWindow,3+i,1,"- Title: %s  ID: %d",info->title,info->id);
 				}
 			}else
 			{
-				wprintw(cfg.win.titlesFromTopicWindow,"Topic without menssages!");
+				mvwprintw(cfg.win.titlesFromTopicWindow,5,5,"Topic without menssages!");
 			}
 			wrefresh(cfg.win.titlesFromTopicWindow);
-			
-			refresh();
+
 			break;
 		}
 		case GET_MESSAGE:
 		{
 			
 			Message *info = buffer;
-			mvprintw(3,2,info->title);
-			mvprintw(4,2,info->body);
-			
-			refresh();
+			mvwprintw(cfg.win.messageFromTopicWindow,3,1,"Title: %s",info->title);
+			mvwprintw(cfg.win.messageFromTopicWindow,4,1,"Body:");
+			mvwprintw(cfg.win.messageFromTopicWindow,5,1,"- %s",info->body);
+			wrefresh(cfg.win.messageFromTopicWindow);
 
 			break;
 		}
 		case MESSAGE_NOT_FOUND:
 		{
-			wprintw(cfg.win.messageFromTopicWindow,"Message does not exist!");
-			refresh();
+			mvwprintw(cfg.win.messageFromTopicWindow,8,8,"Message does not exist!");
+			wrefresh(cfg.win.messageFromTopicWindow);
 			break;
 		}
 		default:
-			printf("Not Recognized Command\n");
+			mvprintw(17,5,"Not Recognized Command\n");
+			refresh();
 			break;
 		}
 	}
@@ -390,7 +414,8 @@ void *fifoListener(void *data)
 
 void shutdown(int warnServer)
 {
-	printf("Shuting Down\n");
+	mvprintw(17,5,"Shuting Down\n");
+	refresh();
 	if (warnServer)
 	{
 		sendToServer(USER_LEAVING, NULL, 0);
@@ -398,6 +423,7 @@ void shutdown(int warnServer)
 	close(cfg.server);
 	close(cfg.fifo);
 	unlink(cfg.fifoPath);
+	sleep(1);
 	endwin();
 	//execlp("reset", "reset", NULL); // resets terminal
 	exit(0);
@@ -409,12 +435,6 @@ void signalHandler(int signal)
 	{
 		printf("Server Down\n");
 	}
-	/*
-	if (signal == SIGINT)
-	{
-		shutdown(true);
-	}
-	*/
 	shutdown(false);
 }
 

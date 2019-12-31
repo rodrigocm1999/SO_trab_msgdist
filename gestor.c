@@ -528,7 +528,10 @@ void *clientMessageReciever(void *data)
 				Message *realMessage = malloc(sizeof(Message));
 				memcpy(realMessage, message, sizeof(Message));
 				realMessage->id = ++cfg.msgId;
-				realMessage->duration = MESSAGE_DURATION;
+				//realMessage->duration = MESSAGE_DURATION;
+				if(realMessage->duration <=0){
+					realMessage->duration = MESSAGE_DURATION;
+				}
 
 				LinkedList_append(&cfg.msgs, realMessage);
 				Node *currTopic = cfg.topics.head;
