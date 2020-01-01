@@ -127,23 +127,23 @@ int main(int argc, char *argv[])
 			char msg[1000];
 
 			echo();
-			mvprintw(2, 2, "Topic: ");
+			mvwprintw(newMessageWindow,1, 1, "Topic: ");
 			//refresh();
-			scanw("%s", message.topic);
+			wscanw(newMessageWindow,"%s", message.topic);
 
-			mvprintw(5, 2, "Title: ");
+			mvwprintw(newMessageWindow,5, 1, "Title: ");
 			refresh();
-			scanw("%s", message.title);
+			wscanw(newMessageWindow,"%s", message.title);
 
 			//Message newMsg(username,topic,titulo,msg);
 
-			mvprintw(8, 2, "Body: ");
+			mvwprintw(newMessageWindow,8, 1, "Body: ");
 			refresh();
-			scanw("%s", message.body);
+			wscanw(newMessageWindow,"%s", message.body);
 			
-			mvprintw(19, 2, "Message Duration: ");
+			mvwprintw(newMessageWindow,18, 1, "Message Duration: ");
 			refresh();
-			scanw("%d",&message.duration);
+			wscanw(newMessageWindow,"%d",&message.duration);
 			
 			/*
 			WINDOW *popupConfirmation = newwin(6,30,7,7);
@@ -157,7 +157,8 @@ int main(int argc, char *argv[])
 			*/
 			
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
-			mvprintw(19, 50, "Message sent");
+			mvwprintw(newMessageWindow,18, 55, "Message sent");
+			wrefresh(newMessageWindow);
 			getch();
 		}
 		if (menu_ret == 2) /* If you select load game, a new    */
