@@ -13,24 +13,26 @@ int main(int argc, char *argv[])
 			switch (res)
 			{
 			case 'f':
-				print_info("[INFO] Using force start option\n");
+				printf("[INFO] Using force start option\n");
+				fprintf(stderr, "[INFO] Using force start option\n");
 				if (isServerRunning())
 				{
 					print_info("[INFO] Deleting old listener FIFO\n");
+					fprintf(stderr, "[INFO] Deleting old listener FIFO\n");
 					unlink(LISTENER_PATH);
 				}
 				checkServerRunning = 0;
 				break;
 
 			default:
-				print_info("Unsuported Option\n-f = force start (used after crash or kill)\n");
+				printf("Unsuported Option\n-f = force start (used after crash or kill)\n");
 				break;
 			}
 		}
 		//check for already running server
 		if (checkServerRunning && isServerRunning())
 		{
-			print_info("Program already running\nExiting\n");
+			fprintf(stderr, "Program already running\nExiting\n");
 			exit(0);
 		}
 	}
@@ -43,7 +45,7 @@ int main(int argc, char *argv[])
 		error |= pthread_mutex_init(&cfg.mutex.usersLock, NULL);
 		if (error != 0)
 		{
-			print_info("Mutex creation has failed\n");
+			fprintf(stderr, "Mutex creation has failed\n");
 			shutdown(SIGINT);
 		}
 
