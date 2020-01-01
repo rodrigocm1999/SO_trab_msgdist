@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 		//check for already running server
 		if (checkServerRunning && isServerRunning())
 		{
-			print_info("Program already running\nExiting\n");
+			fprintf(stderr, "Program already running\nExiting\n");
 			exit(0);
 		}
 	}
@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 		error |= pthread_mutex_init(&cfg.mutex.usersLock, NULL);
 		if (error != 0)
 		{
-			print_info("Mutex creation has failed\n");
+			fprintf(stderr, "Mutex creation has failed\n");
 			shutdown(SIGINT);
 		}
 
