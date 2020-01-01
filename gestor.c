@@ -13,17 +13,19 @@ int main(int argc, char *argv[])
 			switch (res)
 			{
 			case 'f':
-				print_info("[INFO] Using force start option\n");
+				printf("[INFO] Using force start option\n");
+				fprintf(stderr, "[INFO] Using force start option\n");
 				if (isServerRunning())
 				{
 					print_info("[INFO] Deleting old listener FIFO\n");
+					fprintf(stderr, "[INFO] Deleting old listener FIFO\n");
 					unlink(LISTENER_PATH);
 				}
 				checkServerRunning = 0;
 				break;
 
 			default:
-				print_info("Unsuported Option\n-f = force start (used after crash or kill)\n");
+				printf("Unsuported Option\n-f = force start (used after crash or kill)\n");
 				break;
 			}
 		}
