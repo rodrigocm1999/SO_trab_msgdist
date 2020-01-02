@@ -581,7 +581,7 @@ void *clientMessageReciever(void *data)
 					currUserNode = currUserNode->next;
 				}
 				char temp[512];
-				sprintf(temp, "[INFO] New Message -> id : '%d', user : '%s', topic: '%s', title :'%s'\n", realMessage->id, realMessage->username, realMessage->topic, realMessage->title);
+				sprintf(temp, "[INFO] New Message -> id : '%d', user : '%s', topic: '%s', title : '%s', duration : %d\n", realMessage->id, realMessage->username, realMessage->topic, realMessage->title, realMessage->duration);
 				print_info(temp);
 			}
 			lock_all(false);

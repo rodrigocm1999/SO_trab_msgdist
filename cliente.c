@@ -123,28 +123,25 @@ int main(int argc, char *argv[])
 
 			Message message;
 			strcpy(message.username, cfg.username);
-			char topic[20], titulo[100];
-			char msg[1000];
 
 			echo();
-			mvwprintw(newMessageWindow,1, 1, "Topic: ");
-			//refresh();
-			wscanw(newMessageWindow,"%s", message.topic);
+			mvwprintw(newMessageWindow, 1, 1, "Topic: ");
+			wgetstr(newMessageWindow, message.topic);
 
-			mvwprintw(newMessageWindow,5, 1, "Title: ");
+			mvwprintw(newMessageWindow, 5, 1, "Title: ");
 			refresh();
-			wscanw(newMessageWindow,"%s", message.title);
+			wgetstr(newMessageWindow, message.title);
 
-			//Message newMsg(username,topic,titulo,msg);
+			mvwprintw(newMessageWindow, 8, 1, "Body: ");
+			refresh();
+			wgetstr(newMessageWindow, message.body);
 
-			mvwprintw(newMessageWindow,8, 1, "Body: ");
+			mvwprintw(newMessageWindow, 18, 1, "Message Duration: ");
 			refresh();
-			wscanw(newMessageWindow,"%s", message.body);
-			
-			mvwprintw(newMessageWindow,18, 1, "Message Duration: ");
-			refresh();
-			wscanw(newMessageWindow,"%d",&message.duration);
-			
+			char temp[20];
+			wscanw(newMessageWindow, "%s", temp);
+			message.duration = atoi(temp);
+
 			/*
 			WINDOW *popupConfirmation = newwin(6,30,7,7);
 			box(popupConfirmation,0,0);
@@ -155,9 +152,9 @@ int main(int argc, char *argv[])
 			wrefresh(popupConfirmation);
 
 			*/
-			
+
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
-			mvwprintw(newMessageWindow,18, 55, "Message sent");
+			mvwprintw(newMessageWindow, 18, 55, "Message sent");
 			wrefresh(newMessageWindow);
 			getch();
 		}
@@ -166,7 +163,7 @@ int main(int argc, char *argv[])
 			do					 /* the main menu. */
 			{
 				menu_ret2 = print_menu(3, 26, 4, 15, "SELECT", alts2, 1);
-				
+
 				if (menu_ret2 == 1)
 				{
 					// List Topics
@@ -187,18 +184,18 @@ int main(int argc, char *argv[])
 				{
 					erase();
 					refresh();
-					
+
 					cfg.win.titlesFromTopicWindow = newwin(20, 70, 1, 1);
 					box(cfg.win.titlesFromTopicWindow, 0, 0);
 					wrefresh(cfg.win.titlesFromTopicWindow);
 
 					char topic[TOPIC_L];
 					echo();
-					mvwprintw(cfg.win.titlesFromTopicWindow,1,1,"Topic: ");
+					mvwprintw(cfg.win.titlesFromTopicWindow, 1, 1, "Topic: ");
 					wrefresh(cfg.win.titlesFromTopicWindow);
-					wscanw(cfg.win.titlesFromTopicWindow,"%s",topic);
-					
-					sendToServer(LIST_TOPIC_MESSAGES,topic,sizeof(topic));
+					wgetstr(cfg.win.titlesFromTopicWindow, topic);
+
+					sendToServer(LIST_TOPIC_MESSAGES, topic, sizeof(topic));
 
 					getch();
 					erase();
@@ -215,11 +212,11 @@ int main(int argc, char *argv[])
 					wrefresh(cfg.win.messageFromTopicWindow);
 
 					echo();
-					mvwprintw(cfg.win.messageFromTopicWindow,1,1,"Topic ID: ");
-					int *id;
-					wrefresh(cfg.win.messageFromTopicWindow);    
-					wscanw(cfg.win.messageFromTopicWindow,"%d",   &id   );  
-					sendToServer(GET_MESSAGE,    &id    ,sizeof(int));
+					mvwprintw(cfg.win.messageFromTopicWindow, 1, 1, "Topic ID: ");
+					int id;
+					wrefresh(cfg.win.messageFromTopicWindow);
+					wscanw(cfg.win.messageFromTopicWindow, "%d", &id);
+					sendToServer(GET_MESSAGE, &id, sizeof(int));
 
 					getch();
 					erase();
@@ -235,7 +232,7 @@ int main(int argc, char *argv[])
 
 			mvprintw(7, 26, "Topic Name: ");
 			refresh();
-			scanw("%s", buffer);
+			getstr(buffer);
 
 			sendToServer(SUBSCRIBE_TOPIC, buffer, TOPIC_L);
 		}
@@ -246,7 +243,7 @@ int main(int argc, char *argv[])
 
 			mvprintw(7, 26, "Topic Name: ");
 			refresh();
-			scanw("%s", buffer);
+			getstr(buffer);
 
 			sendToServer(UNSUBSCRIBE_TOPIC, buffer, TOPIC_L);
 		}
@@ -298,57 +295,57 @@ void *fifoListener(void *data)
 
 		case SERVER_SHUTDOWN:
 		{
-			mvprintw(17,5,"Server Shuting Down"); // Intented to not change line
+			mvprintw(17, 5, "Server Shuting Down"); // Intented to not change line
 			refresh();
 			shutdown(false);
 		}
 		case KICKED:
 		{
-			mvprintw(17,5,"Kicked from server\nServer "); // Intented to not change line
+			mvprintw(17, 5, "Kicked from server\nServer "); // Intented to not change line
 			refresh();
 			shutdown(false);
 		}
 		case SUBSCRIBED_TO_TOPIC:
 		{
-			mvprintw(17,5,"Subscrition sucessuful\n");
+			mvprintw(17, 5, "Subscrition sucessuful\n");
 			refresh();
 			break;
 		}
 		case UNSUBSCRIBE_TOPIC:
 		{
-			mvprintw(17,5,"Unsubscrition sucessuful\n");
+			mvprintw(17, 5, "Unsubscrition sucessuful\n");
 			refresh();
 			break;
 		}
 		case TOPIC_DELETED:
 		{
-			mvprintw(17,5,"Topic deleted\n");
+			mvprintw(17, 5, "Topic deleted\n");
 			refresh();
 			break;
 		}
 		case ALREADY_SUBSCRIBED:
 		{
-			mvprintw(17,5,"Already subscribed\n");
+			mvprintw(17, 5, "Already subscribed\n");
 			refresh();
 			break;
 		}
 		case NON_EXISTENT_TOPIC:
 		{
-			mvprintw(17,5,"Non existent topic\n");
+			mvprintw(17, 5, "Non existent topic\n");
 			refresh();
 			break;
 		}
 		case MESSAGE_NOTIFICATION:
 		{
 			MessageNotification *notification = buffer;
-			sleep(2);
-			mvprintw(17,5,"New Message with id : '%d' from topic : '%s'", notification->id, notification->topic);
+			sleep(1);
+			mvprintw(17, 5, "New Message with id : '%d' from topic : '%s'", notification->id, notification->topic);
 			refresh();
 			break;
 		}
 		case BAD_MESSAGE:
 		{
-			mvprintw(17,5,"Message discarded\n");
+			mvprintw(17, 5, "Message discarded\n");
 			refresh();
 			break;
 		}
@@ -359,54 +356,53 @@ void *fifoListener(void *data)
 			buffer = buffer + sizeof(int);
 
 			topicos = buffer;
-			mvwprintw(cfg.win.topicsWindow,1,1,"Topics:");
+			mvwprintw(cfg.win.topicsWindow, 1, 1, "Topics:");
 			wrefresh(cfg.win.topicsWindow);
 			for (int i = 0; i < *n_topicos; i++)
-			{
-				mvwprintw(cfg.win.topicsWindow,3+i,1,"- %s", &topicos[i * TOPIC_L]);
-			}
+				mvwprintw(cfg.win.topicsWindow, 3 + i, 1, "- %s", &topicos[i * TOPIC_L]);
+
 			wrefresh(cfg.win.topicsWindow);
-			
 			break;
 		}
 		case LIST_TOPIC_MESSAGES:
 		{
-			
+
 			int *n_titles = buffer;
-			//char *titles;
-			buffer = buffer +sizeof(int);
-			if(*n_titles != 0){
-				for(int i = 0; i < *n_titles;i++){
-					MessageInfo *info = buffer + i * sizeof(MessageInfo);
-					mvwprintw(cfg.win.titlesFromTopicWindow,3+i,1,"- Title: %s  ID: %d",info->title,info->id);
-				}
-			}else
+			buffer = buffer + sizeof(int);
+			if (*n_titles != 0)
 			{
-				mvwprintw(cfg.win.titlesFromTopicWindow,5,5,"Topic without menssages!");
+				for (int i = 0; i < *n_titles; i++)
+				{
+					MessageInfo *info = buffer + i * sizeof(MessageInfo);
+					mvwprintw(cfg.win.titlesFromTopicWindow, 3 + i, 1, "- ID: %d, Title: %s", info->id, info->title);
+				}
 			}
+			else
+				mvwprintw(cfg.win.titlesFromTopicWindow, 5, 5, "Topic without menssages!");
+
 			wrefresh(cfg.win.titlesFromTopicWindow);
 
 			break;
 		}
 		case GET_MESSAGE:
 		{
-			
+
 			Message *info = buffer;
-			mvwprintw(cfg.win.messageFromTopicWindow,3,1,"Title: %s",info->title);
-			mvwprintw(cfg.win.messageFromTopicWindow,4,1,"Body:");
-			mvwprintw(cfg.win.messageFromTopicWindow,5,1,"- %s",info->body);
+			mvwprintw(cfg.win.messageFromTopicWindow, 3, 1, "Title: %s", info->title);
+			mvwprintw(cfg.win.messageFromTopicWindow, 4, 1, "Body:");
+			mvwprintw(cfg.win.messageFromTopicWindow, 5, 1, "%s", info->body);
 			wrefresh(cfg.win.messageFromTopicWindow);
 
 			break;
 		}
 		case MESSAGE_NOT_FOUND:
 		{
-			mvwprintw(cfg.win.messageFromTopicWindow,8,8,"Message does not exist!");
+			mvwprintw(cfg.win.messageFromTopicWindow, 8, 8, "Message does not exist!");
 			wrefresh(cfg.win.messageFromTopicWindow);
 			break;
 		}
 		default:
-			mvprintw(17,5,"Not Recognized Command\n");
+			mvprintw(17, 5, "Not Recognized Command\n");
 			refresh();
 			break;
 		}
@@ -415,7 +411,7 @@ void *fifoListener(void *data)
 
 void shutdown(int warnServer)
 {
-	mvprintw(17,5,"Shuting Down\n");
+	mvprintw(17, 5, "Shuting Down\n");
 	refresh();
 	if (warnServer)
 	{
@@ -460,4 +456,3 @@ int sendToServer(int cmd, void *other, size_t size)
 	free(buffer.ptr);
 	return written;
 }
-
