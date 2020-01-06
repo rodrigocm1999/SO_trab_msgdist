@@ -81,12 +81,12 @@ int main(int argc, char *argv[])
 
 	int menu_ret = 1, menu_ret2 = 1;
 	char alts[][100] = {
-		 {"Write Message"}, /* Every menu needs an */
+		 {"Write Message"}, 
 		 {"Info needed"},
 		 {"Subscribe to Topic"},
-		 {"Unsubscribe from Topic"}, /* array like these to */
+		 {"Unsubscribe from Topic"}, 
 		 {"Exit"},
-	}; /* hold the entries.   */
+	}; 
 	char alts2[][100] = {
 		 {"List Topics"},
 		 {"List Titles in Topic"},
@@ -96,11 +96,11 @@ int main(int argc, char *argv[])
 
 	setlocale(LC_CTYPE, "");
 
-	initscr();					/* Most of the below initialisers are */
-	noecho();					/* not necessary for this example.    */
-	keypad(stdscr, true);	/* It's just a template for a         */
-	meta(stdscr, true);		/* hypothetical program that might    */
-	nodelay(stdscr, false); /* need them.                         */
+	initscr();					
+	noecho();					
+	keypad(stdscr, true);	
+	meta(stdscr, true);		
+	nodelay(stdscr, false); 
 	notimeout(stdscr, true);
 	raw();
 	curs_set(0);
@@ -113,56 +113,51 @@ int main(int argc, char *argv[])
 		menu_ret = print_menu(0, 0, 5, 15,
 									 cfg.username, alts, menu_ret);
 
-		if (menu_ret == 1) /* This is just an example program. */
-		{						 /* You can't start an actual game.  */
+		if (menu_ret == 1) 
+		{
 			erase();
 			refresh();
-			WINDOW *newMessageWindow = newwin(20, 70, 1, 1);
-			box(newMessageWindow, 0, 0);
+			WINDOW *newMessageWindow = newwin(20-2, 70-2, 2, 2);
+			//box(newMessageWindow, 0, 0);
+
+			WINDOW *border_window =   newwin(20, 70, 1, 1);
+			box(border_window,0,0);
+			scrollok(newMessageWindow,true);
+			wrefresh(border_window);
 			wrefresh(newMessageWindow);
 
 			Message message;
 			strcpy(message.username, cfg.username);
 
 			echo();
-			mvwprintw(newMessageWindow, 1, 1, "Topic: ");
+			mvwprintw(newMessageWindow, 0, 1, "Topic: ");
 			wgetstr(newMessageWindow, message.topic);
 
-			mvwprintw(newMessageWindow, 5, 1, "Title: ");
+			mvwprintw(newMessageWindow, 1, 1, "Title: ");
 			refresh();
 			wgetstr(newMessageWindow, message.title);
 
-			mvwprintw(newMessageWindow, 8, 1, "Body: ");
+			mvwprintw(newMessageWindow, 3, 1, "Body: ");
 			refresh();
 			wgetstr(newMessageWindow, message.body);
 
-			mvwprintw(newMessageWindow, 18, 1, "Message Duration: ");
+			mvwprintw(newMessageWindow, 17, 1, "Message Duration: ");
 			refresh();
 			char temp[20];
 			wscanw(newMessageWindow, "%s", temp);
 			message.duration = atoi(temp);
 
-			/*
-			WINDOW *popupConfirmation = newwin(6,30,7,7);
-			box(popupConfirmation,0,0);
-			wrefresh(popupConfirmation);
-	
-			wprintw(popupConfirmation,"Continue to sent mensage?");
-			wprintw(popupConfirmation,"yes or not");
-			wrefresh(popupConfirmation);
-
-			*/
-
 			sendToServer(NEW_MESSAGE, &message, sizeof(Message));
-			mvwprintw(newMessageWindow, 18, 55, "Message sent");
+			mvwprintw(newMessageWindow, 17, 53, "Message sent");
 			wrefresh(newMessageWindow);
 			getch();
 		}
-		if (menu_ret == 2) /* If you select load game, a new    */
-		{						 /* menu will show up without erasing */
-			do					 /* the main menu. */
+		if (menu_ret == 2) 
+		{
+			erase();						 
+			do					
 			{
-				menu_ret2 = print_menu(3, 26, 4, 15, "SELECT", alts2, 1);
+				menu_ret2 = print_menu(0, 0, 4, 15, "SELECT", alts2, 1);
 
 				if (menu_ret2 == 1)
 				{
@@ -422,7 +417,6 @@ void shutdown(int warnServer)
 	unlink(cfg.fifoPath);
 	sleep(1);
 	endwin();
-	//execlp("reset", "reset", NULL); // resets terminal
 	exit(0);
 }
 
