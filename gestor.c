@@ -1140,7 +1140,7 @@ void print_out(char *str)
 void refresh_all_windows()
 {
 	//apaga tudo do ecrã (stdscr está vazio)
-	wrefresh(stdscr);
+	erase();
 	//desenhar as linhas á volta dos espaços de texto
 	box(cfg.win.border_info_win, 0, 0);
 	box(cfg.win.border_input_win, 0, 0);
